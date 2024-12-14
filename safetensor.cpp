@@ -23,12 +23,12 @@ static constexpr int atoi(jute::view v) {
   }
   return res;
 }
-static constexpr bool operator<(jute::view a, jute::view b) {
+static constexpr int operator<=>(jute::view a, jute::view b) {
   for (auto i = 0; true; i++) {
-    if (i >= a.size()) return true;
-    if (i >= b.size()) return false;
-    if (a[i] < b[i]) return true;
-    if (b[i] < a[i]) return false;
+    if (i >= a.size() && i >= b.size()) return 0;
+    if (i >= a.size()) return -1;
+    if (i >= b.size()) return 1;
+    if (a[i] != b[i]) return a[i] - b[i];
   }
 }
 static constexpr int key_cmp(jute::view in_a, jute::view in_b) {
@@ -65,9 +65,12 @@ static constexpr int key_cmp(jute::view in_a, jute::view in_b) {
 
     int ai = atoi(al);
     int bi = atoi(bl);
-    if (ai != -1 && bi != -1) return ai - bi;
-
-    if (al != bl) return al < bl ? -1 : 1;
+    if (ai != -1 && bi != -1) {
+      if (ai != bi) return ai - bi;
+    } else {
+      auto n = al <=> bl;
+      if (n != 0) return n;
+    }
 
     a = ar;
     b = br;
