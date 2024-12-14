@@ -115,9 +115,22 @@ int main(int argc, char ** argv) try {
   }
 
   for (auto key : sorted_keys) {
-    putln(key, ' ');
+    put(key, ' ');
+
+    auto & val = j::cast<jn::dict>(root[*key]);
+    auto & dtype = j::cast<jn::string>(val["dtype"]);
+    auto & shape = j::cast<jn::array>(val["shape"]);
+    auto & offs = j::cast<jn::array>(val["data_offsets"]);
+    auto start = j::cast<jn::number>(offs[0]).integer();
+    auto end = j::cast<jn::number>(offs[1]).integer();
+
+    put(dtype.str(), " [ ");
+    for (auto & v : shape) {
+      put(j::cast<jn::number>(v).integer(), ' ');
+    }
+    putln("] ", start, "-", end);
+
   }
-  putln();
 } catch (...) {
   return 1;
 }
