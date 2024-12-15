@@ -11,6 +11,9 @@ using namespace traits::ints;
 namespace j = jason::ast;
 namespace jn = j::nodes;
 
+static constexpr auto n_ctx = 1024;
+static constexpr auto n_embed = 768;
+
 static const float * extract(const auto & json, jute::view key, jute::view cnt) {
   auto & root = j::cast<jn::dict>(json);
   auto & v = j::cast<jn::dict>(root[key]);
@@ -32,6 +35,22 @@ static const float * extract(const auto & json, jute::view key, jute::view cnt) 
   return reinterpret_cast<const float *>(cnt.begin() + start);
 }
 
+static void init_x(hai::array<float> & x, const auto & in_tks, const auto & json, jute::view cnt) {
+  // TODO: assert wpe/wte sizes
+  auto wte = extract(json, "wte.weight", cnt);
+  auto wpe = extract(json, "wpe.weight", cnt);
+
+  // x = wte[token_ids] + wpe[[0, 1, 2...]]
+  for (auto i = 0; i < in_tks.size(); i++) {
+    auto wte_ptr = &wte[in_tks[i] * n_embed];
+    auto wpe_ptr = &wpe[i * n_embed];
+    auto x_ptr   = &x[i * n_embed];
+    for (auto j = 0; j < n_embed; j++) {
+      x_ptr[j] = wte_ptr[j] + wpe_ptr[j];
+    }
+  }
+}
+
 int main(int argc, char ** argv) try {
   if (argc != 2) die("missing safetensor filename");
 
@@ -50,21 +69,9 @@ int main(int argc, char ** argv) try {
   // TODO: use real tokens
   auto in_tks = hai::array<unsigned>::make(1, 2, 3, 4, 5, 6);
 
-  auto wte = extract(json, "wte.weight", cnt);
-  auto wpe = extract(json, "wpe.weight", cnt);
-
-  static constexpr auto n_ctx = 1024;
-  static constexpr auto n_embed = 768;
-
   hai::array<float> x { n_ctx * n_embed };
-  for (auto i = 0; i < in_tks.size(); i++) {
-    auto wte_ptr = &wte[in_tks[i] * n_embed];
-    auto wpe_ptr = &wpe[i * n_embed];
-    auto x_ptr   = &x[i * n_embed];
-    for (auto j = 0; j < n_embed; j++) {
-      x_ptr[j] = wte_ptr[j] + wpe_ptr[j];
-    }
-  }
+  init_x(x, in_tks, json, cnt);
+
 
   auto xx = x.begin();
   for (auto i = 0; i < in_tks.size(); i++) {
