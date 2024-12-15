@@ -50,10 +50,10 @@ int main(int argc, char ** argv) try {
   // TODO: use real tokens
   auto in_tks = hai::array<unsigned>::make(1, 2, 3, 4, 5, 6);
 
-  auto wte = extract(json, "wte", cnt);
-  auto wpe = extract(json, "wpe", cnt);
+  auto wte = extract(json, "wte.weight", cnt);
+  auto wpe = extract(json, "wpe.weight", cnt);
 
-  hai::array<float> x { 1024 * 768}; // num_xxx * num_yyy
+  hai::array<float> x { 1024 * 768 }; // num_xxx * num_yyy
   for (auto i = 0; i < in_tks.size(); i++) {
     auto wte_ptr = &wte[in_tks[i] * 768];
     auto wpe_ptr = &wpe[i * 768];
@@ -61,6 +61,16 @@ int main(int argc, char ** argv) try {
     for (auto j = 0; j < 768; j++) {
       x_ptr[j] = wte_ptr[j] + wpe_ptr[j];
     }
+  }
+
+  auto xx = x.begin();
+  for (auto i = 0; i < in_tks.size(); i++) {
+    for (auto j = 0; j < 768; j++, xx++) {
+      if (j < 3) put(*xx, " ");
+      if (j == 4) put("...");
+      if (j > 765) put(*xx, " ");
+    }
+    putln();
   }
 } catch (...) {
   return 1;
