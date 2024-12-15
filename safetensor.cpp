@@ -136,27 +136,8 @@ int main(int argc, char ** argv) try {
   namespace j = jason::ast;
   namespace jn = j::nodes;
   auto & root = j::cast<jn::dict>(json);
-  if (argc < 3) {
-    print_keys(root);
-    return 0;
-  }
-
-  auto & v = j::cast<jn::dict>(root[jute::view::unsafe(argv[2])]);
-  auto dtype = j::cast<jn::string>(v["dtype"]).str();
-  if (*dtype != "F32") die("unsupported dtype ", *dtype);
-
-  auto & shape = j::cast<jn::array>(v["shape"]);
-  hai::array<int> shp { shape.size() };
-  for (auto i = 0; i < shp.size(); i++) {
-    shp[i] = j::cast<jn::number>(shape[i]).integer();
-  }
-
-  auto & offs = j::cast<jn::array>(v["data_offsets"]);
-  auto start = j::cast<jn::number>(offs[0]).integer();
-  auto end = j::cast<jn::number>(offs[1]).integer();
-  if (end < start || end - start > cnt.size()) die("invalid offsets ", start, "~", end);
-
-  // TODO: read N dims starting from cnt.begin() + start
+  print_keys(root);
+  return 0;
 } catch (...) {
   return 1;
 }
