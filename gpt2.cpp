@@ -107,14 +107,34 @@ static auto layer_norm(f32a & x, unsigned tks, int layer, const char * ln) {
       res_ptr[j] = weight[j] * (x_ptr[j] - mean) / dotz::sqrt(variance) + bias[j];
     }
   }
-  debug_x(res, tks);
-  putln();
 
   return res;
 }
 
+static auto mha(f32a & x, int tks, int layer) {
+  auto xn = layer_norm(x, tks, layer, "ln_1");
+  auto w = extract(layer, "attn.c_attn", "weight");
+  auto b = extract(layer, "attn.c_attn", "bias");
+
+  // q+k+v for each embed
+  f32a res { x.size() * 3 };
+  // x @ w + b;
+  auto res_ptr = res.begin();
+  for (auto i = 0; i < tks; i++) {
+    auto x_ptr = &x[i * n_embed];
+    for (auto j = 0; j < 3 * n_embed; j++, res_ptr++) {
+      *res_ptr = b[j];
+      for (auto k = 0; k < n_embed; k++) {
+        *res_ptr += x_ptr[k] * w[k * 3 * n_embed + j];
+      }
+    }
+  }
+
+  debug(res, tks, 3 * n_embed);
+}
+
 static void transform(f32a & x, int tks, int layer) {
-  auto ln_1 = layer_norm(x, tks, layer, "ln_1");
+  mha(x, tks, layer);
 }
 
 int main(int argc, char ** argv) try {
