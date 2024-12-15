@@ -53,22 +53,25 @@ int main(int argc, char ** argv) try {
   auto wte = extract(json, "wte.weight", cnt);
   auto wpe = extract(json, "wpe.weight", cnt);
 
-  hai::array<float> x { 1024 * 768 }; // num_xxx * num_yyy
+  static constexpr auto n_ctx = 1024;
+  static constexpr auto n_embed = 768;
+
+  hai::array<float> x { n_ctx * n_embed };
   for (auto i = 0; i < in_tks.size(); i++) {
-    auto wte_ptr = &wte[in_tks[i] * 768];
-    auto wpe_ptr = &wpe[i * 768];
-    auto x_ptr   = &x[i * 768];
-    for (auto j = 0; j < 768; j++) {
+    auto wte_ptr = &wte[in_tks[i] * n_embed];
+    auto wpe_ptr = &wpe[i * n_embed];
+    auto x_ptr   = &x[i * n_embed];
+    for (auto j = 0; j < n_embed; j++) {
       x_ptr[j] = wte_ptr[j] + wpe_ptr[j];
     }
   }
 
   auto xx = x.begin();
   for (auto i = 0; i < in_tks.size(); i++) {
-    for (auto j = 0; j < 768; j++, xx++) {
+    for (auto j = 0; j < n_embed; j++, xx++) {
       if (j < 3) put(*xx, " ");
-      if (j == 4) put("...");
-      if (j > 765) put(*xx, " ");
+      if (j == 4) put("... ");
+      if (j > n_embed - 3) put(*xx, " ");
     }
     putln();
   }
