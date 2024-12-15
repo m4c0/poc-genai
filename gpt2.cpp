@@ -11,7 +11,7 @@ using namespace traits::ints;
 namespace j = jason::ast;
 namespace jn = j::nodes;
 
-static jute::view extract(const auto & json, jute::view key, jute::view cnt) {
+static const float * extract(const auto & json, jute::view key, jute::view cnt) {
   auto & root = j::cast<jn::dict>(json);
   auto & v = j::cast<jn::dict>(root[key]);
   auto dtype = j::cast<jn::string>(v["dtype"]).str();
@@ -28,8 +28,8 @@ static jute::view extract(const auto & json, jute::view key, jute::view cnt) {
   auto end = j::cast<jn::number>(offs[1]).integer();
   if (end < start || end - start > cnt.size()) die("invalid offsets ", start, "~", end);
 
-  unsigned len = end - start;
-  return jute::view { cnt.begin() + start, len };
+  // unsigned len = end - start;
+  return reinterpret_cast<const float *>(cnt.begin() + start);
 }
 
 int main(int argc, char ** argv) try {
@@ -46,10 +46,22 @@ int main(int argc, char ** argv) try {
   
   auto json = jason::parse(hdr);
 
+  // TODO: use a string encoder
+  // TODO: use real tokens
+  auto in_tks = hai::array<unsigned>::make(1, 2, 3, 4, 5, 6);
+
   auto wte = extract(json, "wte", cnt);
   auto wpe = extract(json, "wpe", cnt);
 
-  putln(wte.size(), wpe.size());
+  hai::array<float> x { 1024 * 768}; // num_xxx * num_yyy
+  for (auto i = 0; i < in_tks.size(); i++) {
+    auto wte_ptr = &wte[in_tks[i] * 768];
+    auto wpe_ptr = &wpe[i * 768];
+    auto x_ptr   = &x[i * 768];
+    for (auto j = 0; j < 768; j++) {
+      x_ptr[j] = wte_ptr[j] + wpe_ptr[j];
+    }
+  }
 } catch (...) {
   return 1;
 }
