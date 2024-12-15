@@ -11,11 +11,15 @@ using namespace traits::ints;
 namespace j = jason::ast;
 namespace jn = j::nodes;
 
-static constexpr auto n_ctx = 1024;
-static constexpr auto n_embed = 768;
+static constexpr const auto n_ctx = 1024;
+static constexpr const auto n_embed = 768;
+static constexpr const auto n_layer = 12;
 
-static const float * extract(const auto & json, jute::view key, jute::view cnt) {
-  auto & root = j::cast<jn::dict>(json);
+static jute::view g_cnt {};
+static const jn::dict * g_config {};
+
+static const float * extract(jute::view key) {
+  auto & root = *g_config;
   auto & v = j::cast<jn::dict>(root[key]);
   auto dtype = j::cast<jn::string>(v["dtype"]).str();
   if (*dtype != "F32") die("unsupported dtype ", *dtype);
@@ -29,16 +33,16 @@ static const float * extract(const auto & json, jute::view key, jute::view cnt) 
   auto & offs = j::cast<jn::array>(v["data_offsets"]);
   auto start = j::cast<jn::number>(offs[0]).integer();
   auto end = j::cast<jn::number>(offs[1]).integer();
-  if (end < start || end - start > cnt.size()) die("invalid offsets ", start, "~", end);
+  if (end < start || end - start > g_cnt.size()) die("invalid offsets ", start, "~", end);
 
   // unsigned len = end - start;
-  return reinterpret_cast<const float *>(cnt.begin() + start);
+  return reinterpret_cast<const float *>(g_cnt.begin() + start);
 }
 
-static void init_x(hai::array<float> & x, const auto & in_tks, const auto & json, jute::view cnt) {
+static void init_x(hai::array<float> & x, const auto & in_tks) {
   // TODO: assert wpe/wte sizes
-  auto wte = extract(json, "wte.weight", cnt);
-  auto wpe = extract(json, "wpe.weight", cnt);
+  auto wte = extract("wte.weight");
+  auto wpe = extract("wpe.weight");
 
   // x = wte[token_ids] + wpe[[0, 1, 2...]]
   for (auto i = 0; i < in_tks.size(); i++) {
@@ -59,19 +63,20 @@ int main(int argc, char ** argv) try {
 
   auto hdr_size = *reinterpret_cast<const uint64_t *>(model.begin());
   auto [sz, hdr, cnt] = model.subview(8, hdr_size);
+  g_cnt = cnt;
 
   if (hdr_size != hdr.size())
     die("invalid safetensor - expecting header with size ", hdr_size, ", got ", hdr.size());
   
   auto json = jason::parse(hdr);
+  g_config = &j::cast<jn::dict>(json);
 
   // TODO: use a string encoder
   // TODO: use real tokens
   auto in_tks = hai::array<unsigned>::make(1, 2, 3, 4, 5, 6);
 
   hai::array<float> x { n_ctx * n_embed };
-  init_x(x, in_tks, json, cnt);
-
+  init_x(x, in_tks);
 
   auto xx = x.begin();
   for (auto i = 0; i < in_tks.size(); i++) {
