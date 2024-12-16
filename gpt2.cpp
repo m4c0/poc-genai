@@ -118,24 +118,28 @@ static auto layer_norm(f32a & x, unsigned tks, int layer, const char * ln) {
   return res;
 }
 
-static auto mha(f32a & x, unsigned tks, int layer) {
-  auto xn = layer_norm(x, tks, layer, "ln_1");
-  auto w = extract(layer, "attn.c_attn", "weight");
-  auto b = extract(layer, "attn.c_attn", "bias");
+// x @ w + b;
+static auto linear(f32a & x, unsigned mi, unsigned mj, unsigned mk, int layer, const char * mats) {
+  auto w = extract(layer, mats, "weight");
+  auto b = extract(layer, mats, "bias");
 
-  // q+k+v for each embed
-  f32a qkv { x.size() * 3 };
-  // x @ w + b;
-  auto qkv_ptr = qkv.begin();
-  for (auto i = 0; i < tks; i++) {
-    auto x_ptr = &xn[i * n_embed];
-    for (auto j = 0; j < 3 * n_embed; j++, qkv_ptr++) {
-      *qkv_ptr = b[j];
-      for (auto k = 0; k < n_embed; k++) {
-        *qkv_ptr += x_ptr[k] * w[k * 3 * n_embed + j];
+  f32a res { mi * mj };
+  auto ptr = res.begin();
+  for (auto i = 0; i < mi; i++) {
+    auto x_ptr = &x[i * mk];
+    for (auto j = 0; j < mj; j++, ptr++) {
+      *ptr = b[j];
+      for (auto k = 0; k < mk; k++) {
+        *ptr += x_ptr[k] * w[k * mj + j];
       }
     }
   }
+  return res;
+}
+
+static auto mha(f32a & x, unsigned tks, int layer) {
+  auto xn = layer_norm(x, tks, layer, "ln_1");
+  auto qkv = linear(xn, tks, n_embed * 3, n_embed, layer, "attn.c_attn");
 
   f32a hstack { tks * n_embed };
   f32a smax { tks * tks };
