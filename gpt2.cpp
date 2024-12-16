@@ -23,17 +23,23 @@ static constexpr const auto n_layer = 12;
 static jute::view g_cnt {};
 static const jn::dict * g_config {};
 
-static void debug(const f32a & x, int r, int c) {
-  auto xx = x.begin();
+static void debug(const float *xx, int r, int c) {
   for (auto i = 0; i < r; i++) {
+    if (i >= 3 && i < r - 3) {
+      if (i == 3) putln("...");
+      continue;
+    }
     for (auto j = 0; j < c; j++, xx++) {
       if (j < 3) put(*xx, " ");
-      if (j == 4) put("... ");
-      if (j > c - 3) put(*xx, " ");
+      else if (j > c - 3) put(*xx, " ");
+      else if (j == 4) put("... ");
     }
     putln();
   }
   putln();
+}
+static void debug(const f32a & x, int r, int c) {
+  debug(x.begin(), r, c);
 }
 static void debug_x(const f32a & x, int tks) { debug(x, tks, n_embed); }
 
