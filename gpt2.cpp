@@ -137,8 +137,9 @@ static auto mha(f32a & x, unsigned tks, int layer) {
     }
   }
 
+  f32a hstack { tks * n_embed };
   f32a smax { tks * tks };
-  for (auto h = 0; h < 2; h++) {
+  for (auto h = 0; h < n_head; h++) {
     // q @ k.T / sqrt(tks) + mask
     auto smax_ptr = smax.begin();
     for (auto i = 0; i < tks; i++) {
@@ -174,9 +175,20 @@ static auto mha(f32a & x, unsigned tks, int layer) {
         sij /= sum;
       }
     }
+
     // smax @ v
-    debug(smax, tks, tks);
+    for (auto i = 0; i < tks; i++) {
+      for (auto j = 0; j < emb_hd; j++) {
+        auto hstack_ptr = &hstack[i * n_embed + h * emb_hd + j];
+        *hstack_ptr = 0;
+        for (auto k = 0; k < tks; k++) {
+          auto v_ptr = &qkv[k * n_embed * 3 + 2 * n_embed + h * emb_hd];
+          *hstack_ptr += smax[i * tks + k] * v_ptr[j];
+        }
+      }
+    }
   }
+  debug(hstack, 6, 768);
 }
 
 static void transform(f32a & x, int tks, int layer) {
