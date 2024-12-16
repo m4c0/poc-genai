@@ -214,53 +214,56 @@ int main(int argc, char ** argv) try {
   g_config = &j::cast<jn::dict>(json);
 
   // TODO: use a string encoder
-  // "Hello there!" plus space to generate more tokens
-  auto in_tks = hai::array<unsigned>::make(15496, 612, 5145, 0, 0, 0);
-  auto tks = 3;
+  // "Hello" plus space to generate more tokens
+  auto in_tks = hai::array<unsigned>::make(15496, 11, 0, 0, 0, 0);
+  auto tks = 1;
 
-  f32a x { n_ctx * n_embed };
+  for (; tks < in_tks.size(); tks++) {
+    f32a x { n_ctx * n_embed };
 
-  // TODO: assert wpe/wte sizes
-  auto wte = extract("wte.weight");
-  auto wpe = extract("wpe.weight");
+    // TODO: assert wpe/wte sizes
+    auto wte = extract("wte.weight");
+    auto wpe = extract("wpe.weight");
 
-  // x = wte[token_ids] + wpe[[0, 1, 2...]]
-  for (auto i = 0; i < tks; i++) {
-    auto wte_ptr = &wte[in_tks[i] * n_embed];
-    auto wpe_ptr = &wpe[i * n_embed];
-    auto x_ptr   = &x[i * n_embed];
-    for (auto j = 0; j < n_embed; j++) {
-      x_ptr[j] = wte_ptr[j] + wpe_ptr[j];
-    }
-  }
-
-  for (auto i = 0; i < n_layer; i++) {
-    auto m = mha(x, tks, i);
-    x = ffn(m, tks, i);
-  }
-
-  auto bias = extract("ln_f.bias");
-  auto weight = extract("ln_f.weight");
-  auto xn = layer_norm(x, tks, weight, bias);
-
-  // argmax((xn @ wte.T)[-1])
-  float max = -1e10;
-  int v_id = -1;
-  for (auto i = tks - 1; i < tks; i++) {
-    auto x_ptr = &xn[i * n_embed];
-    for (auto j = 0; j < n_vocab; j++) {
-      float n = 0;
-      for (auto k = 0; k < n_embed; k++) {
-        n += x_ptr[k] * wte[j * n_embed + k];
-      }
-      if (n > max) {
-        max = n;
-        v_id = j;
+    // x = wte[token_ids] + wpe[[0, 1, 2...]]
+    for (auto i = 0; i < tks; i++) {
+      auto wte_ptr = &wte[in_tks[i] * n_embed];
+      auto wpe_ptr = &wpe[i * n_embed];
+      auto x_ptr   = &x[i * n_embed];
+      for (auto j = 0; j < n_embed; j++) {
+        x_ptr[j] = wte_ptr[j] + wpe_ptr[j];
       }
     }
-  }
 
-  putln(v_id);
+    for (auto i = 0; i < n_layer; i++) {
+      auto m = mha(x, tks, i);
+      x = ffn(m, tks, i);
+    }
+
+    auto bias = extract("ln_f.bias");
+    auto weight = extract("ln_f.weight");
+    auto xn = layer_norm(x, tks, weight, bias);
+
+    // argmax((xn @ wte.T)[-1])
+    float max = -1e10;
+    int v_id = -1;
+    for (auto i = tks - 1; i < tks; i++) {
+      auto x_ptr = &xn[i * n_embed];
+      for (auto j = 0; j < n_vocab; j++) {
+        float n = 0;
+        for (auto k = 0; k < n_embed; k++) {
+          n += x_ptr[k] * wte[j * n_embed + k];
+        }
+        if (n > max) {
+          max = n;
+          v_id = j;
+        }
+      }
+    }
+
+    in_tks[tks] = v_id;
+    putln(v_id);
+  }
 } catch (...) {
   return 1;
 }
