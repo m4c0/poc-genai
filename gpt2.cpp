@@ -20,6 +20,7 @@ static constexpr const auto n_embed = 768;
 static constexpr const auto n_eps = 1e-05;
 static constexpr const auto n_head = 12;
 static constexpr const auto n_layer = 12;
+static constexpr const auto n_vocab = 50257;
 
 static constexpr const auto emb_hd = n_embed / n_head;
 
@@ -67,22 +68,6 @@ static auto extract(int layer, const char * a, const char * b) {
   char buf[1024];
   snprintf(buf, sizeof(buf), "h.%d.%s.%s", layer, a, b);
   return extract(jute::view::unsafe(buf));
-}
-
-static void init_x(f32a & x, const auto & in_tks) {
-  // TODO: assert wpe/wte sizes
-  auto wte = extract("wte.weight");
-  auto wpe = extract("wpe.weight");
-
-  // x = wte[token_ids] + wpe[[0, 1, 2...]]
-  for (auto i = 0; i < in_tks.size(); i++) {
-    auto wte_ptr = &wte[in_tks[i] * n_embed];
-    auto wpe_ptr = &wpe[i * n_embed];
-    auto x_ptr   = &x[i * n_embed];
-    for (auto j = 0; j < n_embed; j++) {
-      x_ptr[j] = wte_ptr[j] + wpe_ptr[j];
-    }
-  }
 }
 
 static auto layer_norm(f32a & x, unsigned tks, const float * weight, const float * bias) {
@@ -231,7 +216,21 @@ int main(int argc, char ** argv) try {
   auto tks = in_tks.size();
 
   f32a x { n_ctx * n_embed };
-  init_x(x, in_tks);
+
+  // TODO: assert wpe/wte sizes
+  auto wte = extract("wte.weight");
+  auto wpe = extract("wpe.weight");
+
+  // x = wte[token_ids] + wpe[[0, 1, 2...]]
+  for (auto i = 0; i < in_tks.size(); i++) {
+    auto wte_ptr = &wte[in_tks[i] * n_embed];
+    auto wpe_ptr = &wpe[i * n_embed];
+    auto x_ptr   = &x[i * n_embed];
+    for (auto j = 0; j < n_embed; j++) {
+      x_ptr[j] = wte_ptr[j] + wpe_ptr[j];
+    }
+  }
+
   for (auto i = 0; i < n_layer; i++) {
     auto m = mha(x, tks, i);
     x = ffn(m, tks, i);
