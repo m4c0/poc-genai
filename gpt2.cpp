@@ -123,23 +123,33 @@ static auto mha(f32a & x, unsigned tks, int layer) {
   auto b = extract(layer, "attn.c_attn", "bias");
 
   // q+k+v for each embed
-  f32a res { x.size() * 3 };
+  f32a qkv { x.size() * 3 };
   // x @ w + b;
-  auto res_ptr = res.begin();
+  auto qkv_ptr = qkv.begin();
   for (auto i = 0; i < tks; i++) {
     auto x_ptr = &xn[i * n_embed];
-    for (auto j = 0; j < 3 * n_embed; j++, res_ptr++) {
-      *res_ptr = b[j];
+    for (auto j = 0; j < 3 * n_embed; j++, qkv_ptr++) {
+      *qkv_ptr = b[j];
       for (auto k = 0; k < n_embed; k++) {
-        *res_ptr += x_ptr[k] * w[k * 3 * n_embed + j];
+        *qkv_ptr += x_ptr[k] * w[k * 3 * n_embed + j];
       }
     }
   }
 
-  f32a mask { tks * tks };
+  f32a stfm { tks * tks };
+  // q @ k.T / sqrt(tks) + mask
+  auto stfm_ptr = stfm.begin();
   for (auto i = 0; i < tks; i++) {
-    for (auto j = i + 1; j < tks; j++) {
-      mask[j * tks + i] = -1e10;
+    auto q_ptr = &qkv[i * n_embed * 3];
+    for (auto j = 0; j < tks; j++, stfm_ptr++) {
+      auto k_ptr = &qkv[j * n_embed * 3 + n_embed];
+      *stfm_ptr = 0;
+      for (auto k = 0; k < n_embed; k++) {
+        // j/k in "k" flipped to compensate k.T
+        *stfm_ptr += q_ptr[k] * k_ptr[k];
+      }
+      *stfm_ptr /= dotz::sqrt(static_cast<float>(n_embed));
+      if (j > i) *stfm_ptr += -1e10; // mask
     }
   }
 }
