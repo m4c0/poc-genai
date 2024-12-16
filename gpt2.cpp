@@ -137,43 +137,44 @@ static auto mha(f32a & x, unsigned tks, int layer) {
     }
   }
 
-  f32a stfm { tks * tks };
   // q @ k.T / sqrt(tks) + mask
-  auto stfm_ptr = stfm.begin();
-  for (auto i = 0; i < tks; i++) {
-    // FIXME: it is missing another level of loop of 1..n_head
-    auto q_ptr = &qkv[i * n_embed * 3];
-    for (auto j = 0; j < tks; j++, stfm_ptr++) {
-      auto k_ptr = &qkv[j * n_embed * 3 + n_embed];
-      *stfm_ptr = 0;
-      for (auto k = 0; k < emb_hd; k++) {
-        // j/k in "k" flipped to compensate k.T
-        *stfm_ptr += q_ptr[k] * k_ptr[k];
+  f32a stfm { tks * tks };
+  for (auto h = 0; h < 2; h++) {
+    auto stfm_ptr = stfm.begin();
+    for (auto i = 0; i < tks; i++) {
+      auto q_ptr = &qkv[i * n_embed * 3 + h * emb_hd];
+      for (auto j = 0; j < tks; j++, stfm_ptr++) {
+        auto k_ptr = &qkv[j * n_embed * 3 + n_embed + h * emb_hd];
+        *stfm_ptr = 0;
+        for (auto k = 0; k < emb_hd; k++) {
+          // j/k in "k" flipped to compensate k.T
+          *stfm_ptr += q_ptr[k] * k_ptr[k];
+        }
+        *stfm_ptr /= dotz::sqrt(static_cast<float>(emb_hd));
+        if (j > i) *stfm_ptr += -1e10; // mask
       }
-      *stfm_ptr /= dotz::sqrt(static_cast<float>(emb_hd));
-      if (j > i) *stfm_ptr += -1e10; // mask
     }
-  }
-  for (auto i = 0; i < tks; i++) {
-    float max = -1e10;
-    for (auto j = 0; j < tks; j++) {
-      auto sij = stfm[i * tks + j];
-      if (sij > max) max = sij;
-    }
+    for (auto i = 0; i < tks; i++) {
+      float max = -1e10;
+      for (auto j = 0; j < tks; j++) {
+        auto sij = stfm[i * tks + j];
+        if (sij > max) max = sij;
+      }
 
-    float sum = 0;
-    for (auto j = 0; j < tks; j++) {
-      auto & sij = stfm[i * tks + j];
-      sij = dotz::exp(sij - max);
-      sum += sij;
-    }
+      float sum = 0;
+      for (auto j = 0; j < tks; j++) {
+        auto & sij = stfm[i * tks + j];
+        sij = dotz::exp(sij - max);
+        sum += sij;
+      }
 
-    for (auto j = 0; j < tks; j++) {
-      auto & sij = stfm[i * tks + j];
-      sij /= sum;
+      for (auto j = 0; j < tks; j++) {
+        auto & sij = stfm[i * tks + j];
+        sij /= sum;
+      }
     }
+    debug(stfm, tks, tks);
   }
-  debug(stfm, tks, tks);
 }
 
 static void transform(f32a & x, int tks, int layer) {
