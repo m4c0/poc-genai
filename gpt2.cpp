@@ -127,7 +127,7 @@ static auto mha(f32a & x, int tks, int layer) {
   // x @ w + b;
   auto res_ptr = res.begin();
   for (auto i = 0; i < tks; i++) {
-    auto x_ptr = &x[i * n_embed];
+    auto x_ptr = &xn[i * n_embed];
     for (auto j = 0; j < 3 * n_embed; j++, res_ptr++) {
       *res_ptr = b[j];
       for (auto k = 0; k < n_embed; k++) {
@@ -135,8 +135,6 @@ static auto mha(f32a & x, int tks, int layer) {
       }
     }
   }
-
-  debug(res, tks, 3 * n_embed);
 }
 
 static void transform(f32a & x, int tks, int layer) {
