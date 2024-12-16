@@ -200,7 +200,7 @@ int main(int argc, char ** argv) try {
 
   // TODO: use a string encoder
   // TODO: use real tokens
-  auto in_tks = hai::array<unsigned>::make(1, 2, 3, 4, 5, 6);
+  auto in_tks = hai::array<unsigned>::make(53, 12, 94, 10, 99, 23);
 
   f32a x { n_ctx * n_embed };
   init_x(x, in_tks);
