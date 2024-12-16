@@ -187,10 +187,11 @@ static auto mha(f32a & x, unsigned tks, int layer) {
 
 static constexpr const auto pi = 3.14159265358979323;
 static auto ffn(f32a & x, int tks, int layer) {
-  auto a = linear(x, tks, n_embed * 4, n_embed, layer, "mlp.c_fc", nullptr);
+  auto xn = layer_norm(x, tks, layer, "ln_2");
+  auto a = linear(xn, tks, n_embed * 4, n_embed, layer, "mlp.c_fc", nullptr);
   for (auto & f : a) {
     using namespace dotz;
-    f = 0.5 * f * (1 + tanh(sqrt(2.0 / pi) * (f + 0.044715 * f * f *f)));
+    f = 0.5 * f * (1 + tanh(sqrt(2.0 / pi) * (f + 0.044715 * f * f * f)));
   }
 
   return linear(a, tks, n_embed, n_embed * 4, layer, "mlp.c_proj", x.begin());
