@@ -18,7 +18,10 @@ using f32a = hai::array<float>;
 static constexpr const auto n_ctx = 1024;
 static constexpr const auto n_embed = 768;
 static constexpr const auto n_eps = 1e-05;
+static constexpr const auto n_head = 12;
 static constexpr const auto n_layer = 12;
+
+static constexpr const auto emb_hd = n_embed / n_head;
 
 static jute::view g_cnt {};
 static const jn::dict * g_config {};
@@ -38,9 +41,7 @@ static void debug(const float *xx, int r, int c) {
   }
   putln();
 }
-static void debug(const f32a & x, int r, int c) {
-  debug(x.begin(), r, c);
-}
+static void debug(const f32a & x, int r, int c) { debug(x.begin(), r, c); }
 static void debug_x(const f32a & x, int tks) { debug(x, tks, n_embed); }
 
 static const float * extract(jute::view key) {
@@ -140,21 +141,19 @@ static auto mha(f32a & x, unsigned tks, int layer) {
   // q @ k.T / sqrt(tks) + mask
   auto stfm_ptr = stfm.begin();
   for (auto i = 0; i < tks; i++) {
-#error This does not split QKV per n_head
     // FIXME: it is missing another level of loop of 1..n_head
     auto q_ptr = &qkv[i * n_embed * 3];
     for (auto j = 0; j < tks; j++, stfm_ptr++) {
       auto k_ptr = &qkv[j * n_embed * 3 + n_embed];
       *stfm_ptr = 0;
-      for (auto k = 0; k < n_embed; k++) {
+      for (auto k = 0; k < emb_hd; k++) {
         // j/k in "k" flipped to compensate k.T
         *stfm_ptr += q_ptr[k] * k_ptr[k];
       }
-      *stfm_ptr /= dotz::sqrt(static_cast<float>(n_embed));
+      *stfm_ptr /= dotz::sqrt(static_cast<float>(emb_hd));
       if (j > i) *stfm_ptr += -1e10; // mask
     }
   }
-
   for (auto i = 0; i < tks; i++) {
     float max = -1e10;
     for (auto j = 0; j < tks; j++) {
@@ -174,7 +173,6 @@ static auto mha(f32a & x, unsigned tks, int layer) {
       sij /= sum;
     }
   }
-
   debug(stfm, tks, tks);
 }
 
