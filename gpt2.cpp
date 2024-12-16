@@ -67,7 +67,7 @@ static const float * extract(jute::view key) {
   return reinterpret_cast<const float *>(g_cnt.begin() + start);
 }
 static auto extract(int layer, const char * a, const char * b) {
-  char buf[1024];
+  char buf[1024] {};
   snprintf(buf, sizeof(buf), "h.%d.%s.%s", layer, a, b);
   return extract(jute::view::unsafe(buf));
 }
@@ -116,7 +116,7 @@ static auto linear(f32a & x, unsigned mi, unsigned mj, unsigned mk, int layer, c
   for (auto i = 0; i < mi; i++) {
     auto x_ptr = &x[i * mk];
     for (auto j = 0; j < mj; j++, ptr++) {
-      *ptr = init ? init[i * mk + j] : 0;
+      *ptr = init ? init[i * mj + j] : 0;
       *ptr += b[j];
       for (auto k = 0; k < mk; k++) {
         *ptr += x_ptr[k] * w[k * mj + j];
