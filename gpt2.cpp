@@ -239,7 +239,25 @@ int main(int argc, char ** argv) try {
   auto bias = extract("ln_f.bias");
   auto weight = extract("ln_f.weight");
   auto xn = layer_norm(x, tks, weight, bias);
-  debug(xn, tks, n_embed);
+
+  // argmax((xn @ wte.T)[-1])
+  float max = -1e10;
+  int v_id = -1;
+  for (auto i = tks - 1; i < tks; i++) {
+    auto x_ptr = &xn[i * n_embed];
+    for (auto j = 0; j < n_vocab; j++) {
+      float n = 0;
+      for (auto k = 0; k < n_embed; k++) {
+        n += x_ptr[k] * wte[j * n_embed + k];
+      }
+      if (n > max) {
+        max = n;
+        v_id = j;
+      }
+    }
+  }
+
+  putln(v_id);
 } catch (...) {
   return 1;
 }
