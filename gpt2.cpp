@@ -137,43 +137,45 @@ static auto mha(f32a & x, unsigned tks, int layer) {
     }
   }
 
-  // q @ k.T / sqrt(tks) + mask
-  f32a stfm { tks * tks };
+  f32a smax { tks * tks };
   for (auto h = 0; h < 2; h++) {
-    auto stfm_ptr = stfm.begin();
+    // q @ k.T / sqrt(tks) + mask
+    auto smax_ptr = smax.begin();
     for (auto i = 0; i < tks; i++) {
       auto q_ptr = &qkv[i * n_embed * 3 + h * emb_hd];
-      for (auto j = 0; j < tks; j++, stfm_ptr++) {
+      for (auto j = 0; j < tks; j++, smax_ptr++) {
         auto k_ptr = &qkv[j * n_embed * 3 + n_embed + h * emb_hd];
-        *stfm_ptr = 0;
+        *smax_ptr = 0;
         for (auto k = 0; k < emb_hd; k++) {
           // j/k in "k" flipped to compensate k.T
-          *stfm_ptr += q_ptr[k] * k_ptr[k];
+          *smax_ptr += q_ptr[k] * k_ptr[k];
         }
-        *stfm_ptr /= dotz::sqrt(static_cast<float>(emb_hd));
-        if (j > i) *stfm_ptr += -1e10; // mask
+        *smax_ptr /= dotz::sqrt(static_cast<float>(emb_hd));
+        if (j > i) *smax_ptr += -1e10; // mask
       }
     }
+    // softmax
     for (auto i = 0; i < tks; i++) {
       float max = -1e10;
       for (auto j = 0; j < tks; j++) {
-        auto sij = stfm[i * tks + j];
+        auto sij = smax[i * tks + j];
         if (sij > max) max = sij;
       }
 
       float sum = 0;
       for (auto j = 0; j < tks; j++) {
-        auto & sij = stfm[i * tks + j];
+        auto & sij = smax[i * tks + j];
         sij = dotz::exp(sij - max);
         sum += sij;
       }
 
       for (auto j = 0; j < tks; j++) {
-        auto & sij = stfm[i * tks + j];
+        auto & sij = smax[i * tks + j];
         sij /= sum;
       }
     }
-    debug(stfm, tks, tks);
+    // smax @ v
+    debug(smax, tks, tks);
   }
 }
 
