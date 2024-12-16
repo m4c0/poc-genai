@@ -152,6 +152,28 @@ static auto mha(f32a & x, unsigned tks, int layer) {
       if (j > i) *stfm_ptr += -1e10; // mask
     }
   }
+
+  for (auto i = 0; i < tks; i++) {
+    float max = -1e10;
+    for (auto j = 0; j < tks; j++) {
+      auto sij = stfm[i * tks + j];
+      if (sij > max) max = sij;
+    }
+
+    float sum = 0;
+    for (auto j = 0; j < tks; j++) {
+      auto & sij = stfm[i * tks + j];
+      sij = dotz::exp(sij - max);
+      sum += sij;
+    }
+
+    for (auto j = 0; j < tks; j++) {
+      auto & sij = stfm[i * tks + j];
+      sij /= sum;
+    }
+  }
+
+  debug(stfm, tks, tks);
 }
 
 static void transform(f32a & x, int tks, int layer) {
