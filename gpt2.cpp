@@ -140,6 +140,8 @@ static auto mha(f32a & x, unsigned tks, int layer) {
   // q @ k.T / sqrt(tks) + mask
   auto stfm_ptr = stfm.begin();
   for (auto i = 0; i < tks; i++) {
+#error This does not split QKV per n_head
+    // FIXME: it is missing another level of loop of 1..n_head
     auto q_ptr = &qkv[i * n_embed * 3];
     for (auto j = 0; j < tks; j++, stfm_ptr++) {
       auto k_ptr = &qkv[j * n_embed * 3 + n_embed];
