@@ -42,7 +42,6 @@ static void debug(const float *xx, int r, int c) {
   putln();
 }
 static void debug(const f32a & x, int r, int c) { debug(x.begin(), r, c); }
-static void debug_x(const f32a & x, int tks) { debug(x, tks, n_embed); }
 
 static const float * extract(jute::view key) {
   auto & root = *g_config;
@@ -86,10 +85,7 @@ static void init_x(f32a & x, const auto & in_tks) {
   }
 }
 
-static auto layer_norm(f32a & x, unsigned tks, int layer, const char * ln) {
-  auto bias = extract(layer, ln, "bias");
-  auto weight = extract(layer, ln, "weight");
-
+static auto layer_norm(f32a & x, unsigned tks, const float * weight, const float * bias) {
   f32a res { x.size() };
 
   for (auto i = 0; i < tks; i++) {
@@ -117,9 +113,14 @@ static auto layer_norm(f32a & x, unsigned tks, int layer, const char * ln) {
 
   return res;
 }
+static auto layer_norm(f32a & x, unsigned tks, int layer, const char * ln) {
+  auto bias = extract(layer, ln, "bias");
+  auto weight = extract(layer, ln, "weight");
+  return layer_norm(x, tks, weight, bias);
+}
 
 // x @ w + b;
-static auto linear(f32a & x, unsigned mi, unsigned mj, unsigned mk, int layer, const char * mats) {
+static auto linear(f32a & x, unsigned mi, unsigned mj, unsigned mk, int layer, const char * mats, const float * init) {
   auto w = extract(layer, mats, "weight");
   auto b = extract(layer, mats, "bias");
 
@@ -128,7 +129,8 @@ static auto linear(f32a & x, unsigned mi, unsigned mj, unsigned mk, int layer, c
   for (auto i = 0; i < mi; i++) {
     auto x_ptr = &x[i * mk];
     for (auto j = 0; j < mj; j++, ptr++) {
-      *ptr = b[j];
+      *ptr = init ? init[i * mk + j] : 0;
+      *ptr += b[j];
       for (auto k = 0; k < mk; k++) {
         *ptr += x_ptr[k] * w[k * mj + j];
       }
@@ -139,7 +141,7 @@ static auto linear(f32a & x, unsigned mi, unsigned mj, unsigned mk, int layer, c
 
 static auto mha(f32a & x, unsigned tks, int layer) {
   auto xn = layer_norm(x, tks, layer, "ln_1");
-  auto qkv = linear(xn, tks, n_embed * 3, n_embed, layer, "attn.c_attn");
+  auto qkv = linear(xn, tks, n_embed * 3, n_embed, layer, "attn.c_attn", nullptr);
 
   f32a hstack { tks * n_embed };
   f32a smax { tks * tks };
@@ -193,12 +195,18 @@ static auto mha(f32a & x, unsigned tks, int layer) {
     }
   }
 
-  return linear(hstack, tks, n_embed, n_embed, layer, "attn.c_proj");
+  return linear(hstack, tks, n_embed, n_embed, layer, "attn.c_proj", x.begin());
 }
 
-static void transform(f32a & x, int tks, int layer) {
-  auto m = mha(x, tks, layer);
-  debug(m, 6, 768);
+static constexpr const auto pi = 3.14159265358979323;
+static auto ffn(f32a & x, int tks, int layer) {
+  auto a = linear(x, tks, n_embed * 4, n_embed, layer, "mlp.c_fc", nullptr);
+  for (auto & f : a) {
+    using namespace dotz;
+    f = 0.5 * f * (1 + tanh(sqrt(2.0 / pi) * (f + 0.044715 * f * f *f)));
+  }
+
+  return linear(a, tks, n_embed, n_embed * 4, layer, "mlp.c_proj", x.begin());
 }
 
 int main(int argc, char ** argv) try {
@@ -220,15 +228,19 @@ int main(int argc, char ** argv) try {
   // TODO: use a string encoder
   // TODO: use real tokens
   auto in_tks = hai::array<unsigned>::make(53, 12, 94, 10, 99, 23);
+  auto tks = in_tks.size();
 
   f32a x { n_ctx * n_embed };
   init_x(x, in_tks);
   for (auto i = 0; i < n_layer; i++) {
-    transform(x, in_tks.size(), i);
-    break;
+    auto m = mha(x, tks, i);
+    x = ffn(m, tks, i);
   }
 
-  debug_x(x, in_tks.size());
+  auto bias = extract("ln_f.bias");
+  auto weight = extract("ln_f.weight");
+  auto xn = layer_norm(x, tks, weight, bias);
+  debug(xn, tks, n_embed);
 } catch (...) {
   return 1;
 }
