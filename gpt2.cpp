@@ -192,11 +192,13 @@ static auto mha(f32a & x, unsigned tks, int layer) {
       }
     }
   }
-  debug(hstack, 6, 768);
+
+  return linear(hstack, tks, n_embed, n_embed, layer, "attn.c_proj");
 }
 
 static void transform(f32a & x, int tks, int layer) {
-  mha(x, tks, layer);
+  auto m = mha(x, tks, layer);
+  debug(m, 6, 768);
 }
 
 int main(int argc, char ** argv) try {
