@@ -117,7 +117,7 @@ static auto layer_norm(f32a & x, unsigned tks, int layer, const char * ln) {
   return res;
 }
 
-static auto mha(f32a & x, int tks, int layer) {
+static auto mha(f32a & x, unsigned tks, int layer) {
   auto xn = layer_norm(x, tks, layer, "ln_1");
   auto w = extract(layer, "attn.c_attn", "weight");
   auto b = extract(layer, "attn.c_attn", "bias");
@@ -133,6 +133,13 @@ static auto mha(f32a & x, int tks, int layer) {
       for (auto k = 0; k < n_embed; k++) {
         *res_ptr += x_ptr[k] * w[k * 3 * n_embed + j];
       }
+    }
+  }
+
+  f32a mask { tks * tks };
+  for (auto i = 0; i < tks; i++) {
+    for (auto j = i + 1; j < tks; j++) {
+      mask[j * tks + i] = -1e10;
     }
   }
 }
