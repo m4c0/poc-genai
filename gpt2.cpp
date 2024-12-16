@@ -27,6 +27,7 @@ static constexpr const auto emb_hd = n_embed / n_head;
 static jute::view g_cnt {};
 static const jn::dict * g_config {};
 
+#if 0
 static void debug(const float *xx, int r, int c) {
   for (auto i = 0; i < r; i++) {
     if (i >= 3 && i < r - 3) {
@@ -43,6 +44,7 @@ static void debug(const float *xx, int r, int c) {
   putln();
 }
 static void debug(const f32a & x, int r, int c) { debug(x.begin(), r, c); }
+#endif
 
 static const float * extract(jute::view key) {
   auto & root = *g_config;
@@ -211,9 +213,9 @@ int main(int argc, char ** argv) try {
   g_config = &j::cast<jn::dict>(json);
 
   // TODO: use a string encoder
-  // TODO: use real tokens
-  auto in_tks = hai::array<unsigned>::make(53, 12, 94, 10, 99, 23);
-  auto tks = in_tks.size();
+  // "Hello there!" plus space to generate more tokens
+  auto in_tks = hai::array<unsigned>::make(15496, 612, 5145, 0, 0, 0);
+  auto tks = 3;
 
   f32a x { n_ctx * n_embed };
 
@@ -222,7 +224,7 @@ int main(int argc, char ** argv) try {
   auto wpe = extract("wpe.weight");
 
   // x = wte[token_ids] + wpe[[0, 1, 2...]]
-  for (auto i = 0; i < in_tks.size(); i++) {
+  for (auto i = 0; i < tks; i++) {
     auto wte_ptr = &wte[in_tks[i] * n_embed];
     auto wpe_ptr = &wpe[i * n_embed];
     auto x_ptr   = &x[i * n_embed];
