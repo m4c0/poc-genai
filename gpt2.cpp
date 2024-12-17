@@ -13,7 +13,10 @@ using namespace traits::ints;
 namespace j = jason::ast;
 namespace jn = j::nodes;
 
-using f32a = hai::array<float>;
+template<unsigned W, unsigned H>
+struct f32a {
+  hai::array<float> data { W * H };
+};
 
 static constexpr const auto n_ctx = 1024;
 static constexpr const auto n_embed = 768;
@@ -72,14 +75,14 @@ static auto extract(int layer, const char * a, const char * b) {
   return extract(jute::view::unsafe(buf));
 }
 
-static auto layer_norm(f32a & x, unsigned tks, const float * weight, const float * bias) {
-  f32a res { x.size() };
+static auto layer_norm(f32a<n_ctx, n_embed> & x, unsigned tks, const float * weight, const float * bias) {
+  f32a<n_ctx, n_embed> res {};
 
   for (auto i = 0; i < tks; i++) {
     float mean {};
     float variance {};
 
-    auto x_ptr = &x[i * n_embed];
+    auto x_ptr = &x.data[i * n_embed];
     for (auto j = 0; j < n_embed; j++) {
       mean += x_ptr[j];
     }
@@ -92,7 +95,7 @@ static auto layer_norm(f32a & x, unsigned tks, const float * weight, const float
     variance /= n_embed;
     variance += n_eps;
 
-    auto res_ptr = &res[i * n_embed];
+    auto res_ptr = &res.data[i * n_embed];
     for (auto j = 0; j < n_embed; j++) {
       res_ptr[j] = weight[j] * (x_ptr[j] - mean) / dotz::sqrt(variance) + bias[j];
     }
@@ -100,45 +103,46 @@ static auto layer_norm(f32a & x, unsigned tks, const float * weight, const float
 
   return res;
 }
-static auto layer_norm(f32a & x, unsigned tks, int layer, const char * ln) {
+static auto layer_norm(f32a<n_ctx, n_embed> & x, unsigned tks, int layer, const char * ln) {
   auto bias = extract(layer, ln, "bias");
   auto weight = extract(layer, ln, "weight");
   return layer_norm(x, tks, weight, bias);
 }
 
 // x @ w + b;
-static auto linear(f32a & x, unsigned mi, unsigned mj, unsigned mk, int layer, const char * mats, const float * init) {
+template<unsigned I, unsigned J, unsigned K>
+static auto linear(f32a<I, K> & x, int layer, const char * mats, const float * init) {
   auto w = extract(layer, mats, "weight");
   auto b = extract(layer, mats, "bias");
 
-  f32a res { mi * mj };
-  auto ptr = res.begin();
-  for (auto i = 0; i < mi; i++) {
-    auto x_ptr = &x[i * mk];
-    for (auto j = 0; j < mj; j++, ptr++) {
-      *ptr = init ? init[i * mj + j] : 0;
+  f32a<I, J> res {};
+  auto ptr = res.data.begin();
+  for (auto i = 0; i < I; i++) {
+    auto x_ptr = &x.data[i * K];
+    for (auto j = 0; j < J; j++, ptr++) {
+      *ptr = init ? init[i * J + j] : 0;
       *ptr += b[j];
-      for (auto k = 0; k < mk; k++) {
-        *ptr += x_ptr[k] * w[k * mj + j];
+      for (auto k = 0; k < K; k++) {
+        *ptr += x_ptr[k] * w[k * J + j];
       }
     }
   }
   return res;
 }
 
-static auto mha(f32a & x, unsigned tks, int layer) {
+static auto mha(f32a<n_ctx, n_embed> & x, unsigned tks, int layer) {
   auto xn = layer_norm(x, tks, layer, "ln_1");
-  auto qkv = linear(xn, tks, n_embed * 3, n_embed, layer, "attn.c_attn", nullptr);
+  auto qkv = linear<n_ctx, n_embed * 3, n_embed>(xn, layer, "attn.c_attn", nullptr);
 
-  f32a hstack { tks * n_embed };
-  f32a smax { tks * tks };
+  f32a<n_ctx, n_embed> hstack {};
+  f32a<n_ctx, n_ctx> smax {};
   for (auto h = 0; h < n_head; h++) {
     // q @ k.T / sqrt(tks) + mask
-    auto smax_ptr = smax.begin();
+    auto smax_ptr = smax.data.begin();
     for (auto i = 0; i < tks; i++) {
-      auto q_ptr = &qkv[i * n_embed * 3 + h * emb_hd];
+      auto q_ptr = &qkv.data[i * n_embed * 3 + h * emb_hd];
       for (auto j = 0; j < tks; j++, smax_ptr++) {
-        auto k_ptr = &qkv[j * n_embed * 3 + n_embed + h * emb_hd];
+        auto k_ptr = &qkv.data[j * n_embed * 3 + n_embed + h * emb_hd];
         *smax_ptr = 0;
         for (auto k = 0; k < emb_hd; k++) {
           // j/k in "k" flipped to compensate k.T
@@ -152,19 +156,19 @@ static auto mha(f32a & x, unsigned tks, int layer) {
     for (auto i = 0; i < tks; i++) {
       float max = -1e10;
       for (auto j = 0; j < tks; j++) {
-        auto sij = smax[i * tks + j];
+        auto sij = smax.data[i * tks + j];
         if (sij > max) max = sij;
       }
 
       float sum = 0;
       for (auto j = 0; j < tks; j++) {
-        auto & sij = smax[i * tks + j];
+        auto & sij = smax.data[i * tks + j];
         sij = dotz::exp(sij - max);
         sum += sij;
       }
 
       for (auto j = 0; j < tks; j++) {
-        auto & sij = smax[i * tks + j];
+        auto & sij = smax.data[i * tks + j];
         sij /= sum;
       }
     }
@@ -172,29 +176,29 @@ static auto mha(f32a & x, unsigned tks, int layer) {
     // smax @ v
     for (auto i = 0; i < tks; i++) {
       for (auto j = 0; j < emb_hd; j++) {
-        auto hstack_ptr = &hstack[i * n_embed + h * emb_hd + j];
+        auto hstack_ptr = &hstack.data[i * n_embed + h * emb_hd + j];
         *hstack_ptr = 0;
         for (auto k = 0; k < tks; k++) {
-          auto v_ptr = &qkv[k * n_embed * 3 + 2 * n_embed + h * emb_hd];
-          *hstack_ptr += smax[i * tks + k] * v_ptr[j];
+          auto v_ptr = &qkv.data[k * n_embed * 3 + 2 * n_embed + h * emb_hd];
+          *hstack_ptr += smax.data[i * tks + k] * v_ptr[j];
         }
       }
     }
   }
 
-  return linear(hstack, tks, n_embed, n_embed, layer, "attn.c_proj", x.begin());
+  return linear<n_ctx, n_embed, n_embed>(hstack, layer, "attn.c_proj", x.data.begin());
 }
 
 static constexpr const auto pi = 3.14159265358979323;
-static auto ffn(f32a & x, int tks, int layer) {
+static auto ffn(f32a<n_ctx, n_embed> & x, int tks, int layer) {
   auto xn = layer_norm(x, tks, layer, "ln_2");
-  auto a = linear(xn, tks, n_embed * 4, n_embed, layer, "mlp.c_fc", nullptr);
-  for (auto & f : a) {
+  auto a = linear<n_ctx, n_embed * 4, n_embed>(xn, layer, "mlp.c_fc", nullptr);
+  for (auto & f : a.data) {
     using namespace dotz;
     f = 0.5 * f * (1 + tanh(sqrt(2.0 / pi) * (f + 0.044715 * f * f * f)));
   }
 
-  return linear(a, tks, n_embed, n_embed * 4, layer, "mlp.c_proj", x.begin());
+  return linear<n_ctx, n_embed, n_embed * 4>(a, layer, "mlp.c_proj", x.data.begin());
 }
 
 static void print_token(const auto & vocab, int tk) {
@@ -240,11 +244,12 @@ int main(int argc, char ** argv) try {
   in_tks[tks++] = j::cast<jn::number>(vocab["Ġan"]).integer();
   in_tks[tks++] = j::cast<jn::number>(vocab["Ġamazing"]).integer();
   in_tks[tks++] = j::cast<jn::number>(vocab["Ġplace"]).integer();
+  in_tks[tks++] = j::cast<jn::number>(vocab[","]).integer();
 
   for (auto i = 0; i < tks; i++) print_token(vocab, in_tks[i]);
 
   for (; tks < in_tks.size(); tks++) {
-    f32a x { n_ctx * n_embed };
+    f32a<n_ctx, n_embed> x {};
 
     // TODO: assert wpe/wte sizes
     auto wte = extract("wte.weight");
@@ -254,7 +259,7 @@ int main(int argc, char ** argv) try {
     for (auto i = 0; i < tks; i++) {
       auto wte_ptr = &wte[in_tks[i] * n_embed];
       auto wpe_ptr = &wpe[i * n_embed];
-      auto x_ptr   = &x[i * n_embed];
+      auto x_ptr   = &x.data[i * n_embed];
       for (auto j = 0; j < n_embed; j++) {
         x_ptr[j] = wte_ptr[j] + wpe_ptr[j];
       }
@@ -273,7 +278,7 @@ int main(int argc, char ** argv) try {
     float max = -1e10;
     int v_id = -1;
     for (auto i = tks - 1; i < tks; i++) {
-      auto x_ptr = &xn[i * n_embed];
+      auto x_ptr = &xn.data[i * n_embed];
       for (auto j = 0; j < n_vocab; j++) {
         float n = 0;
         for (auto k = 0; k < n_embed; k++) {
