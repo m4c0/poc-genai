@@ -197,9 +197,26 @@ static auto ffn(f32a & x, int tks, int layer) {
   return linear(a, tks, n_embed, n_embed * 4, layer, "mlp.c_proj", x.begin());
 }
 
+static void print_token(const auto & vocab, int tk) {
+  if (tk == 198) {
+    putln();
+    return;
+  }
+  for (auto &[txt, id]: vocab) {
+    auto id_i = j::cast<jn::number>(id).integer();
+    if (id_i != tk) continue;
+    if (static_cast<unsigned>((*txt)[0]) > 128) {
+      putln(' ', (*txt).subview(1).after);
+    } else putln(txt);
+    return;
+  }
+}
+
 int main(int argc, char ** argv) try {
-  if (argc < 2) die("missing safetensor filename");
-  if (argc > 3) die("too many arguments");
+  if (argc < 4) die("usage: ", argv[0], " <model.safetensor> <vocab.json> 'Prompt'");
+
+  auto vocab_json = jason::parse(jojo::read_cstr(jute::view::unsafe(argv[2])));
+  auto & vocab = j::cast<jn::dict>(vocab_json);
 
   auto model_raw = jojo::read(jute::view::unsafe(argv[1]));
   jute::view model { model_raw.begin(), model_raw.size() };
@@ -215,10 +232,11 @@ int main(int argc, char ** argv) try {
   g_config = &j::cast<jn::dict>(json);
 
   // TODO: use a string encoder
-  // "Hello" plus space to generate more tokens
-  auto in_tks = hai::array<unsigned>::make(15496, 612, 11, 314, 1842);
+  auto in_tks = hai::array<unsigned>::make(16594, 257, 21247);
+  for (auto tk: in_tks) print_token(vocab, tk);
+
+  auto tks = in_tks.size();;
   in_tks.set_capacity(30);
-  auto tks = 5;
 
   for (; tks < in_tks.size(); tks++) {
     f32a x { n_ctx * n_embed };
@@ -264,28 +282,10 @@ int main(int argc, char ** argv) try {
     }
 
     in_tks[tks] = v_id;
-    putln(v_id);
+    print_token(vocab, v_id);
   }
 
-  if (argc == 3) {
-    auto vocab_json = jason::parse(jojo::read_cstr(jute::view::unsafe(argv[2])));
-    auto & vocab = j::cast<jn::dict>(vocab_json);
-    for (auto tk: in_tks) {
-      if (tk == 198) {
-        putln();
-        continue;
-      }
-      for (auto &[txt, id]: vocab) {
-        auto id_i = j::cast<jn::number>(id).integer();
-        if (id_i != tk) continue;
-        if (static_cast<unsigned>((*txt)[0]) > 128) {
-          put(' ', (*txt).subview(1).after);
-        } else put(txt);
-        break;
-      }
-    }
-    putln();
-  }
+  putln();
 } catch (...) {
   return 1;
 }
