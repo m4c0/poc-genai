@@ -250,12 +250,11 @@ int main(int argc, char ** argv) try {
 
   // TODO: implement the encoder properly
   unsigned tks = 0;
-  in_tks[tks++] = j::cast<jn::number>(vocab["Paris"]).integer();
+  in_tks[tks++] = j::cast<jn::number>(vocab["Who"]).integer();
   in_tks[tks++] = j::cast<jn::number>(vocab["Ġis"]).integer();
-  in_tks[tks++] = j::cast<jn::number>(vocab["Ġan"]).integer();
-  in_tks[tks++] = j::cast<jn::number>(vocab["Ġamazing"]).integer();
-  in_tks[tks++] = j::cast<jn::number>(vocab["Ġplace"]).integer();
-  in_tks[tks++] = j::cast<jn::number>(vocab[","]).integer();
+  in_tks[tks++] = j::cast<jn::number>(vocab["ĠAlfred"]).integer();
+  in_tks[tks++] = j::cast<jn::number>(vocab["ĠNobel"]).integer();
+  in_tks[tks++] = j::cast<jn::number>(vocab["?"]).integer();
 
   for (auto i = 0; i < tks; i++) print_token(vocab, in_tks[i]);
 
