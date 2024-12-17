@@ -248,12 +248,14 @@ int main(int argc, char ** argv) try {
 
   for (auto i = 0; i < tks; i++) print_token(vocab, in_tks[i]);
 
+  // TODO: assert wpe/wte sizes
+  auto wte = extract("wte.weight");
+  auto wpe = extract("wpe.weight");
+  auto lnf_b = extract("ln_f.bias");
+  auto lnf_w = extract("ln_f.weight");
+
   for (; tks < in_tks.size(); tks++) {
     f32a<n_ctx, n_embed> x {};
-
-    // TODO: assert wpe/wte sizes
-    auto wte = extract("wte.weight");
-    auto wpe = extract("wpe.weight");
 
     // x = wte[token_ids] + wpe[[0, 1, 2...]]
     for (auto i = 0; i < tks; i++) {
@@ -270,9 +272,7 @@ int main(int argc, char ** argv) try {
       x = ffn(m, tks, i);
     }
 
-    auto bias = extract("ln_f.bias");
-    auto weight = extract("ln_f.weight");
-    auto xn = layer_norm(x, tks, weight, bias);
+    auto xn = layer_norm(x, tks, lnf_w, lnf_b);
 
     // argmax((xn @ wte.T)[-1])
     float max = -1e10;
