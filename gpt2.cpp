@@ -213,7 +213,7 @@ static void print_token(const auto & vocab, int tk) {
 }
 
 int main(int argc, char ** argv) try {
-  if (argc < 4) die("usage: ", argv[0], " <model.safetensor> <vocab.json> 'Prompt'");
+  if (argc < 3) die("usage: ", argv[0], " <model.safetensor> <vocab.json>");
 
   auto vocab_json = jason::parse(jojo::read_cstr(jute::view::unsafe(argv[2])));
   auto & vocab = j::cast<jn::dict>(vocab_json);
@@ -231,12 +231,17 @@ int main(int argc, char ** argv) try {
   auto json = jason::parse(hdr);
   g_config = &j::cast<jn::dict>(json);
 
-  // TODO: use a string encoder
-  auto in_tks = hai::array<unsigned>::make(16594, 257, 21247);
-  for (auto tk: in_tks) print_token(vocab, tk);
+  hai::array<unsigned> in_tks { n_ctx };
 
-  auto tks = in_tks.size();;
-  in_tks.set_capacity(30);
+  // TODO: implement the encoder properly
+  unsigned tks = 0;
+  in_tks[tks++] = j::cast<jn::number>(vocab["Paris"]).integer();
+  in_tks[tks++] = j::cast<jn::number>(vocab["Ġis"]).integer();
+  in_tks[tks++] = j::cast<jn::number>(vocab["Ġan"]).integer();
+  in_tks[tks++] = j::cast<jn::number>(vocab["Ġamazing"]).integer();
+  in_tks[tks++] = j::cast<jn::number>(vocab["Ġplace"]).integer();
+
+  for (auto i = 0; i < tks; i++) print_token(vocab, in_tks[i]);
 
   for (; tks < in_tks.size(); tks++) {
     f32a x { n_ctx * n_embed };
