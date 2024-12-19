@@ -1,11 +1,26 @@
 #version 450
 
-layout(binding = 0) readonly buffer in_a { float a[]; };
-layout(binding = 1) readonly buffer in_b { float b[]; };
-layout(binding = 2) readonly buffer in_c { float c[]; };
-layout(binding = 3) buffer in_d { float d[]; };
+layout(push_constant) uniform in_ijk { ivec4 ijk; };
 
-// d = a @ b + c
+layout(binding = 0) readonly buffer in_x { float mat_x[]; };
+layout(binding = 1) readonly buffer in_w { float mat_w[]; };
+layout(binding = 2) readonly buffer in_b { float mat_b[]; };
+layout(binding = 3) buffer out_x { float mat_out[]; };
+
+// out = x @ w + b
 void main() {
-  uint i = gl_GlobalInvocationID.y * 1024 + gl_GlobalInvocationID.x;
+  uint i = gl_GlobalInvocationID.x;
+  uint j = gl_GlobalInvocationID.y;
+
+  uint lim_i = ijk.x;
+  uint lim_j = ijk.y;
+  uint lim_k = ijk.z;
+
+  float res = mat_b[j];
+  for (int k = 0; k < lim_k; k++) {
+    float x = mat_x[i * lim_k + k];
+    float w = mat_w[k * lim_j + j];
+    res = res + x * w;
+  }
+  mat_out[i * lim_j + j] = res;
 }

@@ -128,7 +128,6 @@ template<unsigned I, unsigned J, unsigned K>
 static auto linear(f32a<I, K> & x, int layer, const char * mats, f32v<I, J> init) {
   auto w = extract<K, J>(layer, mats, "weight");
   auto b = extract<K, 1>(layer, mats, "bias");
-
   f32a<I, J> res {};
 
 #if 1
@@ -145,7 +144,11 @@ static auto linear(f32a<I, K> & x, int layer, const char * mats, f32v<I, J> init
   g_gpu->run(I, J, K);
 
   g_gpu->load(3, [&](auto * p) {
-    for (auto i = 0; i < I * J; i++, p++) res.data[i] = *p;
+    if (init.data) {
+      for (auto i = 0; i < I * J; i++, p++) res.data[i] = *p + init.data[i];
+    } else {
+      for (auto i = 0; i < I * J; i++, p++) res.data[i] = *p;
+    }
   });
 #else
   auto ptr = res.data.begin();

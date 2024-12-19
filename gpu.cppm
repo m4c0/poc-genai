@@ -1,5 +1,6 @@
 #pragma leco add_shader "gpu.comp"
 export module gpu;
+import dotz;
 import vee;
 
 struct buf_mem {
@@ -8,6 +9,8 @@ struct buf_mem {
 };
 export class gpu {
   static constexpr const auto mat_count = 4;
+  using upc = dotz::ivec4;
+
   vee::instance m_i;
   vee::debug_utils_messenger m_dbg;
   vee::device m_d;
@@ -36,7 +39,7 @@ public:
       vee::dsl_compute_storage(),
       vee::dsl_compute_storage(),
     });
-    m_pl = vee::create_pipeline_layout({ *m_dsl });
+    m_pl = vee::create_pipeline_layout({ *m_dsl }, { vee::compute_push_constant_range<upc>() });
 
     m_dpool = vee::create_descriptor_pool(1, { vee::storage_buffer(mat_count) });
 
@@ -65,11 +68,13 @@ public:
     vee::unmap_memory(*m_mats[idx].mem);
   }
   void run(int i, int j, int k) {
+    dotz::ivec4 ijk { i, j, k, 0 };
     vee::reset_fence(*m_f);
     vee::begin_cmd_buf_one_time_submit(m_cb);
     vee::cmd_bind_c_pipeline(m_cb, *m_p);
     vee::cmd_bind_c_descriptor_set(m_cb, *m_pl, 0, m_ds);
-    vee::cmd_dispatch(m_cb, 1, 1, 1);
+    vee::cmd_push_compute_constants(m_cb, *m_pl, &ijk);
+    vee::cmd_dispatch(m_cb, i, j, 1);
     vee::end_cmd_buf(m_cb);
     vee::queue_submit({
       .queue = m_q,
