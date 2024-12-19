@@ -56,7 +56,7 @@ public:
     m_cp = vee::create_command_pool(qf);
     m_cb = vee::allocate_primary_command_buffer(*m_cp);
 
-    m_f = vee::create_fence_reset();
+    m_f = vee::create_fence_signaled();
   }
 
   void load(int idx, auto && fn) {
@@ -64,16 +64,18 @@ public:
     fn(p);
     vee::unmap_memory(*m_mats[idx].mem);
   }
-  void run(int r, int c) {
+  void run(int i, int j, int k) {
+    vee::reset_fence(*m_f);
     vee::begin_cmd_buf_one_time_submit(m_cb);
     vee::cmd_bind_c_pipeline(m_cb, *m_p);
     vee::cmd_bind_c_descriptor_set(m_cb, *m_pl, 0, m_ds);
-    vee::cmd_dispatch(m_cb, r, c, 1);
+    vee::cmd_dispatch(m_cb, 1, 1, 1);
     vee::end_cmd_buf(m_cb);
     vee::queue_submit({
       .queue = m_q,
       .fence = *m_f,
       .command_buffer = m_cb
     });
+    vee::device_wait_idle();
   }
 };
