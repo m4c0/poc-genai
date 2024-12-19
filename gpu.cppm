@@ -69,7 +69,7 @@ public:
   }
   void run(int i, int j, int k) {
     dotz::ivec4 ijk { i, j, k, 0 };
-    vee::reset_fence(*m_f);
+    vee::wait_and_reset_fence(*m_f);
     vee::begin_cmd_buf_one_time_submit(m_cb);
     vee::cmd_bind_c_pipeline(m_cb, *m_p);
     vee::cmd_bind_c_descriptor_set(m_cb, *m_pl, 0, m_ds);
