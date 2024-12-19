@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 import dotz;
+import gpu;
 import jason;
 import jojo;
 import jute;
