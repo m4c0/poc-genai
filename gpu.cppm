@@ -7,6 +7,7 @@ struct buf_mem {
   vee::device_memory mem;
 };
 export class gpu {
+  static constexpr const auto mat_count = 4;
   vee::instance m_i;
   vee::debug_utils_messenger m_dbg;
   vee::device m_d;
@@ -15,7 +16,7 @@ export class gpu {
   vee::pipeline_layout m_pl;
   vee::descriptor_pool m_dpool;
   vee::descriptor_set m_ds;
-  buf_mem m_mats[3];
+  buf_mem m_mats[mat_count];
   vee::c_pipeline m_p;
   vee::command_pool m_cp;
   vee::command_buffer m_cb;
@@ -33,14 +34,15 @@ public:
       vee::dsl_compute_storage(),
       vee::dsl_compute_storage(),
       vee::dsl_compute_storage(),
+      vee::dsl_compute_storage(),
     });
     m_pl = vee::create_pipeline_layout({ *m_dsl });
 
-    m_dpool = vee::create_descriptor_pool(1, { vee::storage_buffer(3) });
+    m_dpool = vee::create_descriptor_pool(1, { vee::storage_buffer(mat_count) });
 
     m_ds = vee::allocate_descriptor_set(*m_dpool, *m_dsl);
 
-    for (auto i = 0; i < 3; i++) {
+    for (auto i = 0; i < mat_count; i++) {
       auto &[b, m] = m_mats[i];
       m = vee::create_host_buffer_memory(pd, mat_mem_sz);
       b = vee::create_buffer(mat_mem_sz, vee::buffer_usage::storage_buffer);
@@ -62,11 +64,11 @@ public:
     fn(p);
     vee::unmap_memory(*m_mats[idx].mem);
   }
-  void run() {
+  void run(int r, int c) {
     vee::begin_cmd_buf_one_time_submit(m_cb);
     vee::cmd_bind_c_pipeline(m_cb, *m_p);
     vee::cmd_bind_c_descriptor_set(m_cb, *m_pl, 0, m_ds);
-    vee::cmd_dispatch(m_cb, 1024, 1024, 1);
+    vee::cmd_dispatch(m_cb, r, c, 1);
     vee::end_cmd_buf(m_cb);
     vee::queue_submit({
       .queue = m_q,
