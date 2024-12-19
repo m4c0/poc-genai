@@ -1,4 +1,4 @@
-#pragma leco tool
+#pragma leco app
 #include <stdio.h>
 
 import dotz;
@@ -38,6 +38,8 @@ static constexpr const auto emb_hd = n_embed / n_head;
 
 static jute::view g_cnt {};
 static const jn::dict * g_config {};
+
+static hai::uptr<gpu> g_gpu {};
 
 #if 0
 static void debug(const float *xx, int r, int c) {
@@ -230,6 +232,9 @@ static void print_token(const auto & vocab, int tk) {
 
 int main(int argc, char ** argv) try {
   if (argc < 3) die("usage: ", argv[0], " <model.safetensor> <vocab.json>");
+
+  // use the largest size required
+  g_gpu = hai::uptr<gpu>::make(static_cast<unsigned>(n_embed * n_vocab * sizeof(float)));
 
   auto vocab_json = jason::parse(jojo::read_cstr(jute::view::unsafe(argv[2])));
   auto & vocab = j::cast<jn::dict>(vocab_json);

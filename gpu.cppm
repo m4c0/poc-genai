@@ -2,74 +2,76 @@
 export module gpu;
 import vee;
 
-void run() {
-  auto i = vee::create_instance("gpt-gpu");
-  auto dbg = vee::create_debug_utils_messenger();
-  const auto & [pd, qf] = vee::find_physical_device_with_universal_queue(nullptr);
-  auto d = vee::create_single_queue_device(pd, qf);
-  auto q = vee::get_queue_for_family(qf);
+struct buf_mem {
+  vee::buffer buf;
+  vee::device_memory mem;
+};
+export class gpu {
+  vee::instance m_i;
+  vee::debug_utils_messenger m_dbg;
+  vee::device m_d;
+  vee::queue m_q;
+  vee::descriptor_set_layout m_dsl;
+  vee::pipeline_layout m_pl;
+  vee::descriptor_pool m_dpool;
+  vee::descriptor_set m_ds;
+  buf_mem m_mats[3];
+  vee::c_pipeline m_p;
+  vee::command_pool m_cp;
+  vee::command_buffer m_cb;
+  vee::fence m_f;
 
-  constexpr const auto buf_sz = 1024 * 1024 * sizeof(float);
-  constexpr const auto mem_sz = buf_sz * 3;
-  vee::device_memory mem = vee::create_host_buffer_memory(pd, mem_sz);
+public:
+  gpu(unsigned mat_mem_sz) {
+    m_i = vee::create_instance("gpt-gpu");
+    m_dbg = vee::create_debug_utils_messenger();
+    const auto & [pd, qf] = vee::find_physical_device_with_universal_queue(nullptr);
+    m_d = vee::create_single_queue_device(pd, qf);
+    m_q = vee::get_queue_for_family(qf);
 
-  auto dsl = vee::create_descriptor_set_layout({
-    vee::dsl_compute_storage(),
-    vee::dsl_compute_storage(),
-    vee::dsl_compute_storage(),
-  });
-  auto pl = vee::create_pipeline_layout({ *dsl });
+    m_dsl = vee::create_descriptor_set_layout({
+      vee::dsl_compute_storage(),
+      vee::dsl_compute_storage(),
+      vee::dsl_compute_storage(),
+    });
+    m_pl = vee::create_pipeline_layout({ *m_dsl });
 
-  auto dpool = vee::create_descriptor_pool(1, { vee::storage_buffer(3) });
+    m_dpool = vee::create_descriptor_pool(1, { vee::storage_buffer(3) });
 
-  auto ds = vee::allocate_descriptor_set(*dpool, *dsl);
+    m_ds = vee::allocate_descriptor_set(*m_dpool, *m_dsl);
 
-  auto buf0 = vee::create_buffer(buf_sz, vee::buffer_usage::storage_buffer);
-  vee::bind_buffer_memory(*buf0, *mem, 0);
-  vee::update_descriptor_set_with_storage(ds, 0, *buf0);
-
-  auto buf1 = vee::create_buffer(buf_sz, vee::buffer_usage::storage_buffer);
-  vee::bind_buffer_memory(*buf1, *mem, buf_sz);
-  vee::update_descriptor_set_with_storage(ds, 1, *buf1);
-
-  auto buf2 = vee::create_buffer(buf_sz, vee::buffer_usage::storage_buffer);
-  vee::bind_buffer_memory(*buf2, *mem, buf_sz * 2);
-  vee::update_descriptor_set_with_storage(ds, 2, *buf2);
-
-  auto kern = vee::create_shader_module_from_resource("gpu.comp.spv");
-  auto p = vee::create_compute_pipeline(*pl, *kern, "main");
-
-  auto cp = vee::create_command_pool(qf);
-  auto cb = vee::allocate_primary_command_buffer(*cp);
-  auto f = vee::create_fence_reset();
-
-  {
-    auto p = static_cast<float *>(vee::map_memory(*mem));
-    for (auto i = 0; i < mem_sz / 4; i++) {
-      p[i] = 1;
+    for (auto i = 0; i < 3; i++) {
+      auto &[b, m] = m_mats[i];
+      m = vee::create_host_buffer_memory(pd, mat_mem_sz);
+      b = vee::create_buffer(mat_mem_sz, vee::buffer_usage::storage_buffer);
+      vee::bind_buffer_memory(*b, *m, 0);
+      vee::update_descriptor_set_with_storage(m_ds, i, *b);
     }
-    vee::unmap_memory(*mem);
+
+    auto kern = vee::create_shader_module_from_resource("gpu.comp.spv");
+    m_p = vee::create_compute_pipeline(*m_pl, *kern, "main");
+
+    m_cp = vee::create_command_pool(qf);
+    m_cb = vee::allocate_primary_command_buffer(*m_cp);
+
+    m_f = vee::create_fence_reset();
   }
 
-  {
-    vee::begin_cmd_buf_one_time_submit(cb);
-    vee::cmd_bind_c_pipeline(cb, *p);
-    vee::cmd_bind_c_descriptor_set(cb, *pl, 0, ds);
-    vee::cmd_dispatch(cb, 1024, 1024, 1);
-    vee::end_cmd_buf(cb);
+  void load(int idx, auto && fn) {
+    auto p = static_cast<float *>(vee::map_memory(*m_mats[idx].mem));
+    fn(p);
+    vee::unmap_memory(*m_mats[idx].mem);
   }
-  vee::queue_submit({
-    .queue = q,
-    .fence = *f,
-    .command_buffer = cb
-  });
-  vee::device_wait_idle();
-
-  {
-    auto p = static_cast<float *>(vee::map_memory(*mem));
-    for (auto i = 0; i < mem_sz / 4; i++) {
-      int _ = p[i];
-    }
-    vee::unmap_memory(*mem);
+  void run() {
+    vee::begin_cmd_buf_one_time_submit(m_cb);
+    vee::cmd_bind_c_pipeline(m_cb, *m_p);
+    vee::cmd_bind_c_descriptor_set(m_cb, *m_pl, 0, m_ds);
+    vee::cmd_dispatch(m_cb, 1024, 1024, 1);
+    vee::end_cmd_buf(m_cb);
+    vee::queue_submit({
+      .queue = m_q,
+      .fence = *m_f,
+      .command_buffer = m_cb
+    });
   }
-}
+};
