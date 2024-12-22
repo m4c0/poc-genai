@@ -260,7 +260,8 @@ int main(int argc, char ** argv) try {
   // use the largest size required
   g_gpu = hai::uptr<gpu>::make(static_cast<unsigned>(n_embed * n_vocab * sizeof(float)));
 
-  auto vocab_json = jason::parse(jojo::read_cstr(jute::view::unsafe(argv[2])));
+  auto vocab_file = jojo::read_cstr(jute::view::unsafe(argv[2]));
+  auto vocab_json = jason::parse(vocab_file);
   auto & vocab = j::cast<jn::dict>(vocab_json);
 
   auto model_raw = jojo::read(jute::view::unsafe(argv[1]));
