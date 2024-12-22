@@ -237,6 +237,7 @@ static auto ffn(f32a<n_ctx, n_embed> & x, int tks, int layer) {
 }
 
 static void print_token(const auto & vocab, int tk) {
+  putf("%5d ", tk);
   if (tk == 198) {
     putln();
     return;
@@ -244,11 +245,10 @@ static void print_token(const auto & vocab, int tk) {
   for (auto &[txt, id]: vocab) {
     auto id_i = j::cast<jn::number>(id).integer();
     if (id_i != tk) continue;
-    if (static_cast<unsigned>((*txt)[0]) > 128) {
-      putln(' ', (*txt).subview(1).after);
-    } else putln(txt);
+    putln(txt);
     return;
   }
+  putln();
 }
 
 int main(int argc, char ** argv) try {
