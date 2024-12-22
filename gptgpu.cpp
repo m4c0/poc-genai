@@ -11,7 +11,7 @@ using namespace traits::ints;
 namespace j = jason::ast;
 namespace jn = j::nodes;
 
-static jute::heap g_cnt {};
+static jute::heap g_head {};
 static const jn::dict * g_config {};
 
 static auto load_model(auto pd) {
@@ -23,13 +23,26 @@ static auto load_model(auto pd) {
   f.fmap(yoyo::read(ptr, len)).take([](auto msg) { die("error reading model: ", msg); });
 
   auto sz = *reinterpret_cast<const uint64_t *>(ptr);
-  g_cnt = jute::view { reinterpret_cast<const char *>(ptr) + 8, sz };
+  g_head = jute::view { reinterpret_cast<const char *>(ptr) + 8, sz };
 
   vee::unmap_memory(*res);
-
-  auto json = jason::parse(*g_cnt);
-  g_config = &j::cast<jn::dict>(json);
   return res;
+}
+static auto create_buffer(jute::view key, auto mem) {
+  auto & root = *g_config;
+  auto & v = j::cast<jn::dict>(root[key]);
+  auto dtype = j::cast<jn::string>(v["dtype"]).str();
+  if (*dtype != "F32") die("unsupported dtype ", *dtype);
+
+  auto & offs = j::cast<jn::array>(v["data_offsets"]);
+  auto start = j::cast<jn::number>(offs[0]).integer();
+  auto end = j::cast<jn::number>(offs[1]).integer();
+  //if (end < start || end - start > g_cnt.size()) die("invalid offsets ", start, "~", end);
+
+  unsigned len = end - start;
+  auto buf = vee::create_buffer(len, vee::buffer_usage::storage_buffer);
+  vee::bind_buffer_memory(*buf, mem, start - g_head.size() - 8);
+  return buf;
 }
 
 int main() try {
@@ -40,6 +53,13 @@ int main() try {
   auto q = vee::get_queue_for_family(qf);
 
   auto model_mem = load_model(pd);
+  auto json = jason::parse(*g_head);
+  g_config = &j::cast<jn::dict>(json);
+
+  auto wte = create_buffer("wte.weight", *model_mem); // n_vocab x n_embed
+  auto wpe = create_buffer("wpe.weight", *model_mem); // n_ctx x n_embed
+  auto lnfb = create_buffer("ln_f.bias", *model_mem); // n_embed x 1
+  auto lnfw = create_buffer("ln_f.weight", *model_mem); // n_embed x 1
 } catch (...) {
   return 1;
 }
