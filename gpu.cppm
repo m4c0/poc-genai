@@ -81,6 +81,6 @@ public:
       .fence = *m_f,
       .command_buffer = m_cb
     });
-    vee::device_wait_idle();
+    vee::wait_for_fence(*m_f);
   }
 };
