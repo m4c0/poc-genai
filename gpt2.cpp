@@ -127,7 +127,7 @@ static auto layer_norm(f32a<n_ctx, n_embed> & x, unsigned tks, int layer, const 
 template<unsigned I, unsigned J, unsigned K>
 static auto linear(f32a<I, K> & x, int layer, const char * mats, f32v<I, J> init) {
   auto w = extract<K, J>(layer, mats, "weight");
-  auto b = extract<K, 1>(layer, mats, "bias");
+  auto b = extract<J, 1>(layer, mats, "bias");
   f32a<I, J> res {};
 
 #if 1
