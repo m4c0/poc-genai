@@ -138,7 +138,7 @@ static auto linear(f32a<I, K> & x, int layer, const char * mats, f32v<I, J> init
     for (auto i = 0; i < K * J; i++, p++) *p = w.data[i];
   });
   g_gpu->load(2, [&](auto * p) {
-    for (auto i = 0; i < K; i++, p++) *p = 0;
+    for (auto j = 0; j < J; j++, p++) *p = b.data[j];
   });
 
   g_gpu->run(I, J, K);
@@ -147,7 +147,7 @@ static auto linear(f32a<I, K> & x, int layer, const char * mats, f32v<I, J> init
     auto res_ptr = res.data.begin();
     for (auto i = 0; i < I; i++) {
       for (auto j = 0; j < J; j++, p++, res_ptr++) {
-        *res_ptr = *p + b.data[j];
+        *res_ptr = *p;
         if (init.data) *res_ptr += init.data[i * J + j];
       }
     }
