@@ -1,0 +1,31 @@
+#version 450
+
+layout(binding = 0) readonly buffer x_ { float x[]; };
+layout(binding = 1) readonly buffer w_ { float w[]; };
+layout(binding = 2) readonly buffer b_ { float b[]; };
+layout(binding = 3) buffer o_ { float o[]; };
+
+const uint  n_embed = 768;
+const float n_eps = 1e-05;
+
+void main() {
+  float mean = 0;
+  float var = n_eps;
+
+  uint i = gl_GlobalInvocationID.x;
+  uint ip = i * n_embed;
+  for (uint j = 0; j < n_embed; j++) {
+    mean += x[ip + j];
+  }
+  mean /= n_embed;
+
+  for (uint j = 0; j < n_embed; j++) {
+    float d = x[ip + j] - mean;
+    var += d * d;
+  }
+  var /= n_embed;
+ 
+  for (uint j = 0; j < n_embed; j++) {
+    o[ip + j] = w[j] * (x[ip + j] - mean) / sqrt(var) + b[j];
+  }
+}
