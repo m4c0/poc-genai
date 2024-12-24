@@ -1,0 +1,25 @@
+#version 450
+
+layout(binding = 0) readonly buffer i_ { float ip[]; };
+layout(binding = 1)          buffer o_ { float op[]; };
+
+const uint n_ctx = 1024;
+
+void main() {
+  uint h = gl_GlobalInvocationID.x;
+  uint i = gl_GlobalInvocationID.y;
+  uint ii = h * n_ctx * n_ctx + i * n_ctx;
+
+  float mx = -1e10;
+  for (uint j = 0; j < n_ctx; j++) {
+    mx = max(mx, ip[ii + j]);
+  }
+
+  float sum = 0;
+  for (uint j = 0; j < n_ctx; j++) {
+    sum += exp(ip[ii + j] - mx);
+  }
+
+  uint j = gl_GlobalInvocationID.z;
+  op[ii + j] = exp(ip[ii + j] - mx) / sum;
+}

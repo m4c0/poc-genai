@@ -134,6 +134,8 @@ int main() try {
   auto l_buf2 = create_local_buffer("h.0.attn.c_attn.weight", *l_mem, l_ptr);
   // b3 = q @ k.T / sqrt(ctx) + mask
   auto l_buf3 = create_local_buffer(n_ctx * n_embed * 3 * n_head, *l_mem, l_ptr);
+  // b4 = softmax(b3)
+  auto l_buf4 = create_local_buffer(n_ctx * n_ctx * n_head, *l_mem, l_ptr);
 
   struct {
     vee::buffer ln1_w {};
@@ -229,6 +231,11 @@ int main() try {
   vee::update_descriptor_set_with_storage(ds_3, 0, *l_buf2);
   vee::update_descriptor_set_with_storage(ds_3, 1, *l_buf3);
 
+  auto ds_4 = vee::allocate_descriptor_set(*dpool, *dsl_m2);
+  auto p_4 = create_pipeline("gptgpu.smax.comp.spv", *pl_m2);
+  vee::update_descriptor_set_with_storage(ds_4, 0, *l_buf3);
+  vee::update_descriptor_set_with_storage(ds_4, 1, *l_buf4);
+
   auto cpool = vee::create_command_pool(qf);
   auto cb = vee::allocate_primary_command_buffer(*cpool);
 
@@ -256,6 +263,11 @@ int main() try {
   vee::cmd_bind_c_descriptor_set(cb, *pl_m2, 0, ds_3);
   vee::cmd_dispatch(cb, n_head, n_ctx, n_embed * 3);
   vee::cmd_pipeline_barrier(cb, *l_buf3, vee::from_compute_to_compute);
+  // softmax
+  vee::cmd_bind_c_pipeline(cb, *p_4);
+  vee::cmd_bind_c_descriptor_set(cb, *pl_m2, 0, ds_4);
+  vee::cmd_dispatch(cb, n_head, n_ctx, n_ctx);
+  vee::cmd_pipeline_barrier(cb, *l_buf4, vee::from_compute_to_compute);
 
   // ffn
 
