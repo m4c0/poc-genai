@@ -130,8 +130,10 @@ int main() try {
   auto l_buf0 = create_local_buffer("wpe.weight", *l_mem, l_ptr);
   // b1 = norm(b0)
   auto l_buf1 = create_local_buffer("wpe.weight", *l_mem, l_ptr);
-  // b2 = linear(b1)
+  // b2 = qkv = linear(b1)
   auto l_buf2 = create_local_buffer("h.0.attn.c_attn.weight", *l_mem, l_ptr);
+  // b3 = q @ k.T / sqrt(ctx) + mask
+  auto l_buf3 = create_local_buffer(n_ctx * n_embed * 3 * n_head, *l_mem, l_ptr);
 
   struct {
     vee::buffer ln1_w {};
@@ -179,7 +181,7 @@ int main() try {
   for (auto i = 0; i < tks; i++) print_token(vocab, in_tks[i]);
   vee::unmap_memory(*tk_mem);
 
-  static constexpr const auto max_sets = 4;
+  static constexpr const auto max_sets = 16;
   auto dpool = vee::create_descriptor_pool(max_sets, { vee::storage_buffer(max_sets * 4) });
 
   auto dsl_m2 = vee::create_descriptor_set_layout({
@@ -252,8 +254,7 @@ int main() try {
   // qkv
   vee::cmd_bind_c_pipeline(cb, *p_3);
   vee::cmd_bind_c_descriptor_set(cb, *pl_m2, 0, ds_3);
-  vee::cmd_push_compute_constants(cb, *pl_m4k, &n_embed);
-  vee::cmd_dispatch(cb, n_ctx, n_embed * 3, n_head);
+  vee::cmd_dispatch(cb, n_head, n_ctx, n_embed * 3);
   vee::cmd_pipeline_barrier(cb, *l_buf3, vee::from_compute_to_compute);
 
   // ffn
