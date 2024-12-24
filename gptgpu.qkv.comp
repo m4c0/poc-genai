@@ -1,0 +1,29 @@
+#version 450
+
+layout(binding = 0) readonly buffer qkv_ { float qkv[]; };
+layout(binding = 1)          buffer o_   { float oo[];  };
+
+const uint n_ctx = 1024;
+const uint n_embed = 768;
+const uint n_head = 12;
+const uint emb_hd = n_embed / n_head;
+
+// q @ k.T / sqrt(tks) + mask
+void main() {
+  uint h = gl_GlobalInvocationID.x;
+  uint i = gl_GlobalInvocationID.y;
+  uint j = gl_GlobalInvocationID.z;
+
+  uint qp = i * n_embed * 3 + h * emb_hd;
+  uint kp = j * n_embed * 3 + h * emb_hd;
+
+  float o = 0;
+  for (uint k = 0; k < emb_hd; k++) {
+    o += qkv[qp + k] * qkv[kp + n_embed + k];
+  }
+  o /= sqrt(emb_hd);
+
+  if (j > i) o -= 1e10; // mask
+
+  oo[h * n_ctx * n_ctx + i * n_ctx + j] = o;
+}

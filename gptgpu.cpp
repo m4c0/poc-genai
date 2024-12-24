@@ -1,6 +1,10 @@
 #pragma leco app
 #pragma leco add_shader "gptgpu.0.comp"
 #pragma leco add_shader "gptgpu.lnorm.comp"
+#pragma leco add_shader "gptgpu.linear.comp"
+#pragma leco add_shader "gptgpu.qkv.comp"
+#pragma leco add_shader "gptgpu.smax.comp"
+
 #include <stdio.h>
 
 import jason;
@@ -18,7 +22,7 @@ namespace jn = j::nodes;
 static constexpr const auto n_ctx = 1024;
 static constexpr const auto n_embed = 768;
 // static constexpr const auto n_eps = 1e-05;
-// static constexpr const auto n_head = 12;
+static constexpr const auto n_head = 12;
 static constexpr const auto n_layer = 12;
 // static constexpr const auto n_vocab = 50257;
 
@@ -67,14 +71,16 @@ static auto create_buffer(int layer, const char * a, const char * b, auto mem) {
   return create_buffer(jute::view::unsafe(buf), mem);
 }
 
-static auto create_local_buffer(jute::view sz, auto mem, auto & acc) {
-  auto [ start, end ] = parr_view(sz);
-  unsigned len = end - start;
-
+static auto create_local_buffer(unsigned len, auto mem, auto & acc) {
   auto buf = vee::create_buffer(len, vee::buffer_usage::storage_buffer);
   vee::bind_buffer_memory(*buf, mem, acc);
   acc += len;
   return buf;
+}
+static auto create_local_buffer(jute::view sz, auto mem, auto & acc) {
+  auto [ start, end ] = parr_view(sz);
+  unsigned len = end - start;
+  return create_local_buffer(len, mem, acc);
 }
 
 static auto create_pipeline(jute::view shd, auto pl) {
@@ -124,6 +130,8 @@ int main() try {
   auto l_buf0 = create_local_buffer("wpe.weight", *l_mem, l_ptr);
   // b1 = norm(b0)
   auto l_buf1 = create_local_buffer("wpe.weight", *l_mem, l_ptr);
+  // b2 = linear(b1)
+  auto l_buf2 = create_local_buffer("h.0.attn.c_attn.weight", *l_mem, l_ptr);
 
   struct {
     vee::buffer ln1_w {};
@@ -171,7 +179,13 @@ int main() try {
   for (auto i = 0; i < tks; i++) print_token(vocab, in_tks[i]);
   vee::unmap_memory(*tk_mem);
 
-  auto dpool = vee::create_descriptor_pool(2, { vee::storage_buffer(8) });
+  static constexpr const auto max_sets = 4;
+  auto dpool = vee::create_descriptor_pool(max_sets, { vee::storage_buffer(max_sets * 4) });
+
+  auto dsl_m2 = vee::create_descriptor_set_layout({
+    vee::dsl_compute_storage(),
+    vee::dsl_compute_storage(),
+  });
 
   auto dsl_m4 = vee::create_descriptor_set_layout({
     vee::dsl_compute_storage(),
@@ -179,7 +193,13 @@ int main() try {
     vee::dsl_compute_storage(),
     vee::dsl_compute_storage(),
   });
+
+  auto pl_m2 = vee::create_pipeline_layout({ *dsl_m2 });
+
   auto pl_m4 = vee::create_pipeline_layout({ *dsl_m4 });
+  auto pl_m4k = vee::create_pipeline_layout(
+    { *dsl_m4 },
+    { vee::compute_push_constant_range<unsigned>() });
 
   auto ds_0 = vee::allocate_descriptor_set(*dpool, *dsl_m4);
   auto p_0 = create_pipeline("gptgpu.0.comp.spv", *pl_m4);
@@ -195,6 +215,18 @@ int main() try {
   vee::update_descriptor_set_with_storage(ds_1, 2, *l[0].ln1_b);
   vee::update_descriptor_set_with_storage(ds_1, 3, *l_buf1);
 
+  auto ds_2 = vee::allocate_descriptor_set(*dpool, *dsl_m4);
+  auto p_2 = create_pipeline("gptgpu.linear.comp.spv", *pl_m4k);
+  vee::update_descriptor_set_with_storage(ds_2, 0, *l_buf1);
+  vee::update_descriptor_set_with_storage(ds_2, 1, *l[0].attn_w);
+  vee::update_descriptor_set_with_storage(ds_2, 2, *l[0].attn_b);
+  vee::update_descriptor_set_with_storage(ds_2, 3, *l_buf2);
+
+  auto ds_3 = vee::allocate_descriptor_set(*dpool, *dsl_m2);
+  auto p_3 = create_pipeline("gptgpu.qkv.comp.spv", *pl_m2);
+  vee::update_descriptor_set_with_storage(ds_3, 0, *l_buf2);
+  vee::update_descriptor_set_with_storage(ds_3, 1, *l_buf3);
+
   auto cpool = vee::create_command_pool(qf);
   auto cb = vee::allocate_primary_command_buffer(*cpool);
 
@@ -206,9 +238,23 @@ int main() try {
   vee::cmd_pipeline_barrier(cb, *l_buf0, vee::from_compute_to_compute);
 
   // mha
+  // layer norm
   vee::cmd_bind_c_pipeline(cb, *p_1);
   vee::cmd_bind_c_descriptor_set(cb, *pl_m4, 0, ds_1);
   vee::cmd_dispatch(cb, n_ctx, 1, 1);
+  vee::cmd_pipeline_barrier(cb, *l_buf1, vee::from_compute_to_compute);
+  // linear attn
+  vee::cmd_bind_c_pipeline(cb, *p_2);
+  vee::cmd_bind_c_descriptor_set(cb, *pl_m4, 0, ds_2);
+  vee::cmd_push_compute_constants(cb, *pl_m4k, &n_embed);
+  vee::cmd_dispatch(cb, n_ctx, n_embed * 3, 1);
+  vee::cmd_pipeline_barrier(cb, *l_buf2, vee::from_compute_to_compute);
+  // qkv
+  vee::cmd_bind_c_pipeline(cb, *p_3);
+  vee::cmd_bind_c_descriptor_set(cb, *pl_m2, 0, ds_3);
+  vee::cmd_push_compute_constants(cb, *pl_m4k, &n_embed);
+  vee::cmd_dispatch(cb, n_ctx, n_embed * 3, n_head);
+  vee::cmd_pipeline_barrier(cb, *l_buf3, vee::from_compute_to_compute);
 
   // ffn
 
