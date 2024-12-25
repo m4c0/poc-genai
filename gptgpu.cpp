@@ -1,5 +1,4 @@
 #pragma leco app
-#pragma leco add_shader "gptgpu.0.comp"
 #pragma leco add_shader "gptgpu.lnorm.comp"
 #pragma leco add_shader "gptgpu.linear.comp"
 #pragma leco add_shader "gptgpu.qkv.comp"
@@ -7,6 +6,7 @@
 
 #include <stdio.h>
 
+import gpt2;
 import jason;
 import jojo;
 import jute;
@@ -126,8 +126,6 @@ int main() try {
   auto l_mem = vee::create_local_buffer_memory(pd, 1);
   unsigned l_ptr {};
 
-  // b0 = wte[tk] + wpe[[0, 1, 2, ...]] -- n_ctx x n_embed
-  auto l_buf0 = create_local_buffer("wpe.weight", *l_mem, l_ptr);
   // b1 = norm(b0)
   auto l_buf1 = create_local_buffer("wpe.weight", *l_mem, l_ptr);
   // b2 = qkv = linear(b1)
@@ -183,6 +181,8 @@ int main() try {
   for (auto i = 0; i < tks; i++) print_token(vocab, in_tks[i]);
   vee::unmap_memory(*tk_mem);
 
+  gpt2::stages::wtewpe wtewpe { pd, *wte, *wpe, *tk_buf };
+
   static constexpr const auto max_sets = 16;
   auto dpool = vee::create_descriptor_pool(max_sets, { vee::storage_buffer(max_sets * 4) });
 
@@ -205,16 +205,9 @@ int main() try {
     { *dsl_m4 },
     { vee::compute_push_constant_range<unsigned>() });
 
-  auto ds_0 = vee::allocate_descriptor_set(*dpool, *dsl_m4);
-  auto p_0 = create_pipeline("gptgpu.0.comp.spv", *pl_m4);
-  vee::update_descriptor_set_with_storage(ds_0, 0, *wte);
-  vee::update_descriptor_set_with_storage(ds_0, 1, *wpe);
-  vee::update_descriptor_set_with_storage(ds_0, 2, *tk_buf);
-  vee::update_descriptor_set_with_storage(ds_0, 3, *l_buf0);
-
   auto ds_1 = vee::allocate_descriptor_set(*dpool, *dsl_m4);
   auto p_1 = create_pipeline("gptgpu.lnorm.comp.spv", *pl_m4);
-  vee::update_descriptor_set_with_storage(ds_1, 0, *l_buf0);
+  vee::update_descriptor_set_with_storage(ds_1, 0, wtewpe.buffer());
   vee::update_descriptor_set_with_storage(ds_1, 1, *l[0].ln1_w);
   vee::update_descriptor_set_with_storage(ds_1, 2, *l[0].ln1_b);
   vee::update_descriptor_set_with_storage(ds_1, 3, *l_buf1);
@@ -240,11 +233,7 @@ int main() try {
   auto cb = vee::allocate_primary_command_buffer(*cpool);
 
   vee::begin_cmd_buf_one_time_submit(cb);
-  vee::cmd_bind_c_pipeline(cb, *p_0);
-  vee::cmd_bind_c_descriptor_set(cb, *pl_m4, 0, ds_0);
-  vee::cmd_dispatch(cb, n_ctx, n_embed, 1);
-
-  vee::cmd_pipeline_barrier(cb, *l_buf0, vee::from_compute_to_compute);
+  wtewpe.cmd_dispatch(cb);
 
   // mha
   // layer norm
