@@ -28,10 +28,10 @@ namespace gpt2::stages {
       m_ds = utils::allocate_dset(*m_dpool, *dsl, wte, wpe, tks, *m_out);
     }
 
-    void cmd_dispatch(vee::command_buffer cb) {
+    void cmd_dispatch(vee::command_buffer cb, unsigned tks) {
       vee::cmd_bind_c_pipeline(cb, *m_p);
       vee::cmd_bind_c_descriptor_set(cb, *m_pl, 0, m_ds);
-      vee::cmd_dispatch(cb, n_ctx, n_embed, 1);
+      vee::cmd_dispatch(cb, tks, n_embed, 1);
       vee::cmd_pipeline_barrier(cb, *m_out, vee::from_compute_to_compute);
     }
 

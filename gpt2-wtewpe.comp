@@ -9,6 +9,5 @@ layout(binding = 3)          buffer x_   { float x[];   };
 void main() {
   uint ctx = gl_GlobalInvocationID.x;
   uint emb = gl_GlobalInvocationID.y;
-  uint i = ctx * 768 + emb;
-  x[i] = wte[tk[ctx]] + wpe[i];
+  x[ctx * 768 + emb] = wte[tk[ctx] * 768 + emb] + wpe[ctx * 768 + emb];
 }

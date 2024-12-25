@@ -20,7 +20,7 @@ namespace gpt2 {
         if (i == 3) put("... ");
         if (i >= 3 && i < c - 3) continue;
 
-        putf("%1.3f ", out[h * c + i]);
+        putf("%+1.3f ", out[h * c + i]);
       }
       putln();
     }
