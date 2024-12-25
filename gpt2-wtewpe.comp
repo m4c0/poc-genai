@@ -2,13 +2,13 @@
 
 layout(binding = 0) readonly buffer wte_ { float wte[]; };
 layout(binding = 1) readonly buffer wpe_ { float wpe[]; };
-layout(binding = 2) readonly buffer tk_ { uint tk[]; };
-layout(binding = 3) buffer x_ { float x[]; };
+layout(binding = 2) readonly buffer tk_  { uint  tk[];  };
+layout(binding = 3)          buffer x_   { float x[];   };
 
 // x = wte[tk] + wpe[i]
 void main() {
-  uint ix = gl_GlobalInvocationID.x;
-  uint iy = gl_GlobalInvocationID.y;
-  uint i = iy * gl_NumWorkGroups.x + ix;
-  x[i] = wte[tk[i]] + wpe[i];
+  uint ctx = gl_GlobalInvocationID.x;
+  uint emb = gl_GlobalInvocationID.y;
+  uint i = ctx * 768 + emb;
+  x[i] = wte[tk[ctx]] + wpe[i];
 }
