@@ -122,20 +122,6 @@ int main() try {
   static constexpr const auto max_sets = 16;
   auto dpool = vee::create_descriptor_pool(max_sets, { vee::storage_buffer(max_sets * 4) });
 
-  auto dsl_m2 = vee::create_descriptor_set_layout({
-    vee::dsl_compute_storage(),
-    vee::dsl_compute_storage(),
-  });
-
-  auto dsl_m4 = vee::create_descriptor_set_layout({
-    vee::dsl_compute_storage(),
-    vee::dsl_compute_storage(),
-    vee::dsl_compute_storage(),
-    vee::dsl_compute_storage(),
-  });
-
-  auto pl_m2 = vee::create_pipeline_layout({ *dsl_m2 });
-
   auto cpool = vee::create_command_pool(qf);
   auto cb = vee::allocate_primary_command_buffer(*cpool);
 
