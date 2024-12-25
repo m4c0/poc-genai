@@ -40,6 +40,7 @@ namespace gpt2::stages {
       vee::cmd_bind_c_pipeline(cb, *m_p);
       vee::cmd_bind_c_descriptor_set(cb, *m_pl, 0, m_ds);
       vee::cmd_dispatch(cb, n_head, n_ctx, n_ctx);
+      vee::cmd_pipeline_barrier(cb, *m_out, vee::from_compute_to_compute);
     }
 
     auto memory() const { return *m_mem; }

@@ -58,11 +58,12 @@ int main() try {
   });
   vee::wait_for_fence(*f);
 
-  ptr = static_cast<float *>(vee::map_memory(smax0.memory()));
+  auto out = static_cast<float *>(vee::map_memory(smax0.memory()));
   for (auto i = 0; i < n_head * n_ctx; i++) {
-    putf("%f ", ptr[i]);
+    auto n = static_cast<int>(out[i]);
+    if (n > 0) putf("%d ", n);
   }
-  vee::unmap_memory(*mem);
+  vee::unmap_memory(smax0.memory());
 } catch (...) {
   return 1;
 }
