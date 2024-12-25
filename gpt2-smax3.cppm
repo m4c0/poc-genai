@@ -1,7 +1,7 @@
 #pragma leco add_shader "gpt2-smax3.comp"
 export module gpt2:smax3;
 import :consts;
-import jute;
+import :utils;
 import vee;
 
 namespace gpt2::stages {
@@ -12,10 +12,6 @@ namespace gpt2::stages {
     vee::c_pipeline m_p;
     vee::buffer::type m_in;
 
-    static auto create_pipeline(jute::view shd, vee::pipeline_layout::type pl) {
-      auto k = vee::create_shader_module_from_resource(shd);
-      return vee::create_compute_pipeline(pl, *k, "main");
-    } 
   public:
     smax3(vee::physical_device pd, vee::buffer::type in, vee::buffer::type mx) {
       m_in = in;
@@ -27,10 +23,8 @@ namespace gpt2::stages {
       m_dpool = vee::create_descriptor_pool(1, { vee::storage_buffer(2) });
       m_pl = vee::create_pipeline_layout({ *dsl });
 
-      m_ds = vee::allocate_descriptor_set(*m_dpool, *dsl);
-      m_p = create_pipeline("gpt2-smax3.comp.spv", *m_pl);
-      vee::update_descriptor_set_with_storage(m_ds, 0, in);
-      vee::update_descriptor_set_with_storage(m_ds, 1, mx);
+      m_p = utils::create_pipeline("gpt2-smax3.comp.spv", *m_pl);
+      m_ds = utils::allocate_dset(*m_dpool, *dsl, in, mx);
     };
 
     void cmd_dispatch(vee::command_buffer cb) {
