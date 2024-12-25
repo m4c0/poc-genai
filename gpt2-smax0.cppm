@@ -43,10 +43,10 @@ namespace gpt2::stages {
     void cmd_dispatch(vee::command_buffer cb) {
       vee::cmd_bind_c_pipeline(cb, *m_p);
       vee::cmd_bind_c_descriptor_set(cb, *m_pl, 0, m_ds0);
-      vee::cmd_dispatch(cb, n_head, n_ctx, n_ctx);
+      vee::cmd_dispatch(cb, n_head * n_ctx, 1, n_ctx);
       vee::cmd_pipeline_barrier(cb, *m_out, vee::from_compute_to_compute);
       vee::cmd_bind_c_descriptor_set(cb, *m_pl, 0, m_ds1);
-      vee::cmd_dispatch(cb, n_head, n_ctx, 32);
+      vee::cmd_dispatch(cb, n_head * n_ctx, 1, 32);
       vee::cmd_pipeline_barrier(cb, *m_out, vee::from_compute_to_compute);
     }
 
