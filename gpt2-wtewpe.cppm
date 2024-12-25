@@ -36,5 +36,6 @@ namespace gpt2::stages {
     }
 
     auto buffer() const { return *m_out; }
+    auto memory() const { return m_out.memory(); }
   };
 };
