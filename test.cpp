@@ -60,8 +60,9 @@ int main() try {
 
   auto out = static_cast<float *>(vee::map_memory(smax0.memory()));
   for (auto i = 0; i < n_head * n_ctx; i++) {
+    if (i > 30 && i < n_head * n_ctx - 30) continue;
     auto n = static_cast<int>(out[i]);
-    if (n > 0) putf("%d ", n);
+    putf("%d ", n);
   }
   vee::unmap_memory(smax0.memory());
 } catch (...) {
