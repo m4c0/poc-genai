@@ -1,9 +1,10 @@
 #version 450
 #extension GL_KHR_shader_subgroup_arithmetic : require
-#extension GL_EXT_shader_atomic_float2 : require
 
 layout(binding = 0) readonly buffer i_ { float ip[]; };
 layout(binding = 1)          buffer t_ { float mx[]; };
+
+layout(local_size_z = 32) in;
 
 const uint n_ctx = 1024;
 
@@ -11,11 +12,11 @@ void main() {
   uint h = gl_GlobalInvocationID.x;
   uint i = gl_GlobalInvocationID.y;
   uint j = gl_GlobalInvocationID.z;
+  uint s = gl_WorkGroupID.z;
   uint p = h * n_ctx * n_ctx + i * n_ctx + j;
-  uint m = h * n_ctx + i;
-
-  if (j == 0) { mx[m] = -1e10; }
+  uint m = h * n_ctx * n_ctx + i * n_ctx + s;
   barrier();
 
-  atomicMax(mx[0], ip[p]);
+  float mm = subgroupMax(ip[p]);
+  if (subgroupElect()) { mx[m] = mm; }
 }

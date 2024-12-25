@@ -59,10 +59,19 @@ int main() try {
   vee::wait_for_fence(*f);
 
   auto out = static_cast<float *>(vee::map_memory(smax0.memory()));
-  for (auto i = 0; i < n_head * n_ctx; i++) {
-    if (i > 30 && i < n_head * n_ctx - 30) continue;
-    auto n = static_cast<int>(out[i]);
-    putf("%d ", n);
+  for (auto h = 0; h < n_head; h++) {
+    if (h > 2 && h < n_head - 2) continue;
+    for (auto i = 0; i < n_ctx; i++) {
+      if (i > 2 && i < n_ctx - 2) continue;
+
+      auto hi = h * n_ctx * n_ctx + i * n_ctx;
+      for (auto j = 0; j < n_ctx; j++) {
+        if (j > 8 && j < n_ctx - 8) continue;
+        auto n = static_cast<int>(out[hi + j]);
+        putf("%8d ", n);
+      }
+      putln();
+    }
   }
   vee::unmap_memory(smax0.memory());
 } catch (...) {
