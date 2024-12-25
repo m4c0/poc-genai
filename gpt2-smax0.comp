@@ -15,7 +15,6 @@ void main() {
   uint s = gl_WorkGroupID.z;
   uint p = h * n_ctx * n_ctx + i * n_ctx + j;
   uint m = h * n_ctx * n_ctx + i * n_ctx + s;
-  barrier();
 
   float mm = subgroupMax(ip[p]);
   if (subgroupElect()) { mx[m] = mm; }
