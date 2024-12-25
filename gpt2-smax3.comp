@@ -1,0 +1,11 @@
+#version 450
+
+layout(binding = 0)          buffer i_ { float ip[]; };
+layout(binding = 1) readonly buffer m_ { float sm[]; };
+
+void main() {
+  uint h = gl_GlobalInvocationID.x;
+  uint p = h * 1024 + gl_GlobalInvocationID.z;
+  uint m = h * 32;
+  ip[p] = ip[p] / sm[m];
+}
