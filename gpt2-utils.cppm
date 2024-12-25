@@ -3,7 +3,7 @@ import jute;
 import vee;
 
 namespace gpt2::utils {
-  class buffer {
+  export class buffer {
     vee::buffer m_buf;
     vee::device_memory m_mem;
 
