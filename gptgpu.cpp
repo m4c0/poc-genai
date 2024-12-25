@@ -26,61 +26,11 @@ namespace jn = j::nodes;
 static constexpr const auto n_layer = 12;
 // static constexpr const auto n_vocab = 50257;
 
-static jute::heap g_head {};
-static const jn::dict * g_config {};
-
-static auto load_model(auto pd) {
-  auto f = yoyo::file_reader::open("out/model.safetensors");
-  auto len = f.fmap(yoyo::size()).take([](auto msg) { die("error reading model: ", msg); });
-
-  auto res = vee::create_host_buffer_memory(pd, len);
-  auto ptr = static_cast<float *>(vee::map_memory(*res));
-  f.fmap(yoyo::read(ptr, len)).take([](auto msg) { die("error reading model: ", msg); });
-
-  auto sz = *reinterpret_cast<const uint64_t *>(ptr);
-  g_head = jute::view { reinterpret_cast<const char *>(ptr) + 8, sz };
-
-  vee::unmap_memory(*res);
-  return res;
-}
-static auto parr_view(jute::view key) {
-  auto & root = *g_config;
-  auto & v = j::cast<jn::dict>(root[key]);
-  auto dtype = j::cast<jn::string>(v["dtype"]).str();
-  if (*dtype != "F32") die("unsupported dtype ", *dtype);
-
-  auto & offs = j::cast<jn::array>(v["data_offsets"]);
-
-  struct pair { int start, end; } res;
-  res.start = j::cast<jn::number>(offs[0]).integer();
-  res.end = j::cast<jn::number>(offs[1]).integer();
-  //if (end < start || end - start > g_cnt.size()) die("invalid offsets ", start, "~", end);
-  return res;
-}
-static auto create_buffer(jute::view key, auto mem) {
-  auto [ start, end ] = parr_view(key);
-
-  unsigned len = end - start;
-  auto buf = vee::create_buffer(len, vee::buffer_usage::storage_buffer);
-  vee::bind_buffer_memory(*buf, mem, start - g_head.size() - 8);
-  return buf;
-}
-static auto create_buffer(int layer, const char * a, const char * b, auto mem) {
-  char buf[1024] {};
-  snprintf(buf, sizeof(buf), "h.%d.%s.%s", layer, a, b);
-  return create_buffer(jute::view::unsafe(buf), mem);
-}
-
 static auto create_local_buffer(unsigned len, auto mem, auto & acc) {
   auto buf = vee::create_buffer(len, vee::buffer_usage::storage_buffer);
   vee::bind_buffer_memory(*buf, mem, acc);
   acc += len;
   return buf;
-}
-static auto create_local_buffer(jute::view sz, auto mem, auto & acc) {
-  auto [ start, end ] = parr_view(sz);
-  unsigned len = end - start;
-  return create_local_buffer(len, mem, acc);
 }
 
 static auto create_pipeline(jute::view shd, auto pl) {
@@ -114,14 +64,12 @@ int main() try {
   auto d = vee::create_single_queue_device(pd, qf);
   auto q = vee::get_queue_for_family(qf);
 
-  auto mem = load_model(pd);
-  auto json = jason::parse(*g_head);
-  g_config = &j::cast<jn::dict>(json);
+  auto mem = gpt2::load(pd);
 
-  auto wte = create_buffer("wte.weight", *mem); // n_vocab x n_embed
-  auto wpe = create_buffer("wpe.weight", *mem); // n_ctx x n_embed
-  auto lnfb = create_buffer("ln_f.bias", *mem); // n_embed x 1
-  auto lnfw = create_buffer("ln_f.weight", *mem); // n_embed x 1
+  auto wte = gpt2::create_st_buffer("wte.weight"); // n_vocab x n_embed
+  auto wpe = gpt2::create_st_buffer("wpe.weight"); // n_ctx x n_embed
+  auto lnfb = gpt2::create_st_buffer("ln_f.bias"); // n_embed x 1
+  auto lnfw = gpt2::create_st_buffer("ln_f.weight"); // n_embed x 1
 
   struct {
     vee::buffer ln1_w {};
@@ -139,19 +87,19 @@ int main() try {
     vee::buffer mlp_pb {};
   } l[n_layer] {};
   for (auto i = 0; i < n_layer; i++) {
-    l[i].ln1_w = create_buffer(i, "ln_1", "weight", *mem);
-    l[i].ln1_b = create_buffer(i, "ln_1", "bias", *mem);
-    l[i].attn_w = create_buffer(i, "attn.c_attn", "weight", *mem);
-    l[i].attn_b = create_buffer(i, "attn.c_attn", "bias", *mem);
-    l[i].attn_pw = create_buffer(i, "attn.c_proj", "weight", *mem);
-    l[i].attn_pb = create_buffer(i, "attn.c_proj", "bias", *mem);
+    l[i].ln1_w = gpt2::create_st_buffer(i, "ln_1", "weight");
+    l[i].ln1_b = gpt2::create_st_buffer(i, "ln_1", "bias");
+    l[i].attn_w = gpt2::create_st_buffer(i, "attn.c_attn", "weight");
+    l[i].attn_b = gpt2::create_st_buffer(i, "attn.c_attn", "bias");
+    l[i].attn_pw = gpt2::create_st_buffer(i, "attn.c_proj", "weight");
+    l[i].attn_pb = gpt2::create_st_buffer(i, "attn.c_proj", "bias");
 
-    l[i].ln2_w = create_buffer(i, "ln_2", "weight", *mem);
-    l[i].ln2_b = create_buffer(i, "ln_2", "bias", *mem);
-    l[i].attn_w = create_buffer(i, "mlp.c_fc", "weight", *mem);
-    l[i].attn_b = create_buffer(i, "mlp.c_fc", "bias", *mem);
-    l[i].attn_pw = create_buffer(i, "mlp.c_proj", "weight", *mem);
-    l[i].attn_pb = create_buffer(i, "mlp.c_proj", "bias", *mem);
+    l[i].ln2_w = gpt2::create_st_buffer(i, "ln_2", "weight");
+    l[i].ln2_b = gpt2::create_st_buffer(i, "ln_2", "bias");
+    l[i].attn_w = gpt2::create_st_buffer(i, "mlp.c_fc", "weight");
+    l[i].attn_b = gpt2::create_st_buffer(i, "mlp.c_fc", "bias");
+    l[i].attn_pw = gpt2::create_st_buffer(i, "mlp.c_proj", "weight");
+    l[i].attn_pb = gpt2::create_st_buffer(i, "mlp.c_proj", "bias");
   }
 
   // TODO: implement the encoder properly
