@@ -34,7 +34,7 @@ int main() try {
   auto mem = vee::create_host_buffer_memory(pd, *buf);
   vee::bind_buffer_memory(*buf, *mem, 0);
 
-  stages::smax0 smax0 { pd, *buf };
+  stages::smax smax { pd, *buf };
 
   auto cpool = vee::create_command_pool(qf);
   auto cb = vee::allocate_primary_command_buffer(*cpool);
@@ -46,7 +46,7 @@ int main() try {
   vee::unmap_memory(*mem);
 
   vee::begin_cmd_buf_one_time_submit(cb);
-  smax0.cmd_dispatch(cb);
+  smax.cmd_dispatch(cb);
   vee::end_cmd_buf(cb);
 
   auto f = vee::create_fence_signaled();
@@ -58,6 +58,7 @@ int main() try {
   });
   vee::wait_for_fence(*f);
 
+  /*
   auto out = static_cast<float *>(vee::map_memory(smax0.memory()));
   for (auto h = 0; h < n_head; h++) {
     if (h > 2 && h < n_head - 2) continue;
@@ -74,6 +75,7 @@ int main() try {
     }
   }
   vee::unmap_memory(smax0.memory());
+  */
 } catch (...) {
   return 1;
 }

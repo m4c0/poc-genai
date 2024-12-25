@@ -50,6 +50,7 @@ namespace gpt2::stages {
       vee::cmd_pipeline_barrier(cb, *m_out, vee::from_compute_to_compute);
     }
 
+    auto buffer() const { return *m_out; }
     auto memory() const { return *m_mem; }
   };
 }
