@@ -48,16 +48,18 @@ static void debug(const float *xx, int r, int c) {
       if (i == 3) putln("...");
       continue;
     }
-    for (auto j = 0; j < c; j++, xx++) {
-      if (j < 3) put(*xx, " ");
-      else if (j > c - 3) put(*xx, " ");
+    for (auto j = 0; j < c; j++) {
+      float x = xx[i * c + j];
+      if (j < 3) putf("%+.4f ", x);
+      else if (j > c - 3) putf("%+.4f ", x);
       else if (j == 4) put("... ");
     }
     putln();
   }
   putln();
 }
-static void debug(const f32a & x, int r, int c) { debug(x.begin(), r, c); }
+template<unsigned W, unsigned H>
+static void debug(const f32a<W, H> & x) { debug(x.data.begin(), W, H); }
 #endif
 
 template<unsigned W, unsigned H>
@@ -252,16 +254,14 @@ static void print_token(const auto & vocab, int tk) {
 }
 
 int main(int argc, char ** argv) try {
-  if (argc < 3) die("usage: ", argv[0], " <model.safetensor> <vocab.json>");
-
   // use the largest size required
   g_gpu = hai::uptr<gpu>::make(static_cast<unsigned>(n_embed * n_vocab * sizeof(float)));
 
-  auto vocab_file = jojo::read_cstr(jute::view::unsafe(argv[2]));
+  auto vocab_file = jojo::read_cstr("out/vocab.json");
   auto vocab_json = jason::parse(vocab_file);
   auto & vocab = j::cast<jn::dict>(vocab_json);
 
-  auto model_raw = jojo::read(jute::view::unsafe(argv[1]));
+  auto model_raw = jojo::read("out/model.safetensors");
   jute::view model { model_raw.begin(), model_raw.size() };
 
   auto hdr_size = *reinterpret_cast<const uint64_t *>(model.begin());
