@@ -11,14 +11,17 @@ namespace gpt2::stages {
     vee::pipeline_layout m_pl;
     vee::c_pipeline m_p;
     vee::buffer m_out;
+    vee::device_memory m_mem;
 
     static auto create_pipeline(jute::view shd, vee::pipeline_layout::type pl) {
       auto k = vee::create_shader_module_from_resource(shd);
       return vee::create_compute_pipeline(pl, *k, "main");
     } 
   public:
-    smax0(vee::buffer::type in) {
+    smax0(vee::physical_device pd, vee::buffer::type in) {
       m_out = vee::create_buffer(n_head * n_ctx, vee::buffer_usage::storage_buffer);
+      m_mem = vee::create_host_buffer_memory(pd, *m_out);
+      vee::bind_buffer_memory(*m_out, *m_mem, 0);
 
       auto dsl = vee::create_descriptor_set_layout({
         vee::dsl_compute_storage(),
@@ -32,5 +35,13 @@ namespace gpt2::stages {
       vee::update_descriptor_set_with_storage(m_ds, 0, in);
       vee::update_descriptor_set_with_storage(m_ds, 1, *m_out);
     };
+
+    void cmd_dispatch(vee::command_buffer cb) {
+      vee::cmd_bind_c_pipeline(cb, *m_p);
+      vee::cmd_bind_c_descriptor_set(cb, *m_pl, 0, m_ds);
+      vee::cmd_dispatch(cb, n_head, n_ctx, n_ctx);
+    }
+
+    auto memory() const { return *m_mem; }
   };
 }

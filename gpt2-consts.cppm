@@ -1,6 +1,6 @@
 export module gpt2:consts;
 
-namespace gpt2 {
+export namespace gpt2 {
   constexpr const auto n_ctx = 1024;
   constexpr const auto n_embed = 768;
   constexpr const auto n_eps = 1e-05;
