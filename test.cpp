@@ -41,7 +41,7 @@ int main() try {
 
   auto * ptr = static_cast<float *>(vee::map_memory(*mem));
   for (auto i = 0; i < n; i++) {
-    ptr[i] = i;
+    ptr[i] = i + 1;
   }
   vee::unmap_memory(*mem);
 
