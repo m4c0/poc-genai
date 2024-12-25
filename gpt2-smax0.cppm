@@ -20,7 +20,7 @@ namespace gpt2::stages {
     } 
   public:
     smax0(vee::physical_device pd, vee::buffer::type in) {
-      m_out = vee::create_buffer(n_head * n_ctx * n_ctx * sizeof(float), vee::buffer_usage::storage_buffer);
+      m_out = vee::create_buffer(n_head * n_ctx * 32 * sizeof(float), vee::buffer_usage::storage_buffer);
       m_mem = vee::create_host_buffer_memory(pd, *m_out);
       vee::bind_buffer_memory(*m_out, *m_mem, 0);
 
@@ -46,7 +46,7 @@ namespace gpt2::stages {
       vee::cmd_dispatch(cb, n_head, n_ctx, n_ctx);
       vee::cmd_pipeline_barrier(cb, *m_out, vee::from_compute_to_compute);
       vee::cmd_bind_c_descriptor_set(cb, *m_pl, 0, m_ds1);
-      vee::cmd_dispatch(cb, n_head, n_ctx, n_ctx);
+      vee::cmd_dispatch(cb, n_head, n_ctx, 32);
       vee::cmd_pipeline_barrier(cb, *m_out, vee::from_compute_to_compute);
     }
 

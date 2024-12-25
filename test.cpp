@@ -64,8 +64,8 @@ int main() try {
     for (auto i = 0; i < n_ctx; i++) {
       if (i > 2 && i < n_ctx - 2) continue;
 
-      auto hi = h * n_ctx * n_ctx + i * n_ctx;
-      for (auto j = 0; j < n_ctx; j++) {
+      auto hi = h * n_ctx * 32 + i * 32;
+      for (auto j = 0; j < 32; j++) {
         if (j > 8 && j < n_ctx - 8) continue;
         auto n = static_cast<int>(out[hi + j]);
         putf("%8d ", n);
