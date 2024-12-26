@@ -41,4 +41,9 @@ namespace gpt2::stages {
     auto buffer() const { return *m_out; }
     auto memory() const { return m_out.memory(); }
   };
+
+  export template<unsigned X, unsigned Z> struct reduce_sum : reduce1k<X, Z> {
+    reduce_sum(vee::physical_device pd, vee::buffer::type in)
+      : reduce1k<X, Z> { pd, in, "gpt2-reduce1k-sum.comp.spv" } {};
+  };
 }

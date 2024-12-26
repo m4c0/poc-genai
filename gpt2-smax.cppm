@@ -1,14 +1,14 @@
 export module gpt2:smax;
+import :reduce1k;
 import :smax0;
 import :smax1;
-import :smax2;
 import :smax3;
 
 namespace gpt2::stages {
   export class smax {
     smax0 m_0; // max(x)
     smax1 m_1; // x = exp(x - max)
-    smax2 m_2; // sum(x)
+    reduce_sum<n_head * n_ctx, n_ctx> m_2; // sum(x)
     smax3 m_3; // x / sum(x)
 
   public:
