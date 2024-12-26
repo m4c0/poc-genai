@@ -1,9 +1,4 @@
 #pragma leco app
-#pragma leco add_shader "gptgpu.lnorm.comp"
-#pragma leco add_shader "gptgpu.linear.comp"
-#pragma leco add_shader "gptgpu.qkv.comp"
-#pragma leco add_shader "gptgpu.smax.comp"
-
 #include <stdio.h>
 
 import gpt2;
