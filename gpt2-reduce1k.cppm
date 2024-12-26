@@ -1,3 +1,4 @@
+#pragma leco add_shader "gpt2-reduce1k-sum.comp"
 export module gpt2:reduce1k;
 import :consts;
 import :utils;
