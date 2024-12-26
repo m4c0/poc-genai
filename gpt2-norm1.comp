@@ -1,0 +1,8 @@
+#version 450
+
+layout(binding = 0) buffer a_ { float sm[]; };
+
+void main() {
+  uint h = gl_GlobalInvocationID.x * gl_NumWorkGroups.y + gl_GlobalInvocationID.y;
+  sm[h] /= 768;
+}
