@@ -1,8 +1,18 @@
 #version 450
+#extension GL_KHR_shader_subgroup_arithmetic : require
 
-layout(binding = 0) buffer a_ { float sm[]; };
+layout(binding = 0) readonly buffer a_ { float ip[]; };
+layout(binding = 1) readonly buffer b_ { float mn[]; };
+layout(binding = 2)          buffer c_ { float vr[]; };
+
+layout(local_size_z = 32) in;
 
 void main() {
-  uint h = gl_GlobalInvocationID.x * gl_NumWorkGroups.y + gl_GlobalInvocationID.y;
-  sm[h] /= 768;
+  uint h = gl_GlobalInvocationID.x * 32;
+  uint p = h * gl_NumWorkGroups.z + gl_GlobalInvocationID.z;
+  uint m = h                      + gl_WorkGroupID.z;
+
+  float d = ip[p] - mn[h] / 768;
+  float mm = subgroupAdd(d * d);
+  if (subgroupElect()) { vr[m] = mm; }
 }

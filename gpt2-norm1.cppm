@@ -13,13 +13,15 @@ namespace gpt2::stages {
     vee::buffer::type m_in;
 
   public:
-    norm1(vee::physical_device pd, vee::buffer::type in) {
+    norm1(vee::physical_device pd, vee::buffer::type in, vee::buffer::type mn) {
       m_in = in;
 
       auto dsl = vee::create_descriptor_set_layout({
         vee::dsl_compute_storage(),
+        vee::dsl_compute_storage(),
+        vee::dsl_compute_storage(),
       });
-      m_dpool = vee::create_descriptor_pool(1, { vee::storage_buffer(1) });
+      m_dpool = vee::create_descriptor_pool(1, { vee::storage_buffer(3) });
       m_pl = vee::create_pipeline_layout({ *dsl });
 
       m_p = utils::create_pipeline("gpt2-norm1.comp.spv", *m_pl);
@@ -29,7 +31,7 @@ namespace gpt2::stages {
     void cmd_dispatch(vee::command_buffer cb) {
       vee::cmd_bind_c_pipeline(cb, *m_p);
       vee::cmd_bind_c_descriptor_set(cb, *m_pl, 0, m_ds);
-      vee::cmd_dispatch(cb, n_ctx, 32, 1);
+      vee::cmd_dispatch(cb, n_ctx, 24, 1);
       vee::cmd_pipeline_barrier(cb, m_in, vee::from_compute_to_compute);
     }
   };
