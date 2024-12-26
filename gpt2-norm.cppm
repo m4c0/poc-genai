@@ -9,9 +9,9 @@ namespace gpt2::stages {
     utils::buffer m_var;
     utils::buffer m_out;
     reduce_sum<n_ctx, n_embed> m_0;
-    kernel<n_ctx, 1, 24> m_1; // sum((x - mean) ^ 2)
-    kernel<n_ctx, 1, 1> m_2;
-    kernel<n_ctx, 1, n_embed> m_3; // out
+    kernel m_1; // sum((x - mean) ^ 2)
+    kernel m_2;
+    kernel m_3; // out
 
   public:
     norm(vee::physical_device pd,
@@ -28,9 +28,9 @@ namespace gpt2::stages {
 
     void cmd_dispatch(vee::command_buffer cb, unsigned tks) {
       m_0.cmd_dispatch(cb);
-      m_1.cmd_dispatch(cb);
-      m_2.cmd_dispatch(cb);
-      m_3.cmd_dispatch(cb, tks);
+      m_1.cmd_dispatch(cb, tks, 1, 24);
+      m_2.cmd_dispatch(cb, tks, 1, 1);
+      m_3.cmd_dispatch(cb, tks, 1, n_embed);
     }
 
     auto memory() const { return m_out.memory(); }

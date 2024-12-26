@@ -4,7 +4,6 @@ import jute;
 import vee;
 
 namespace gpt2 {
-  template<unsigned X, unsigned Y, unsigned Z>
   class kernel {
     vee::descriptor_pool m_dpool;
     vee::descriptor_set m_ds;
@@ -28,7 +27,7 @@ namespace gpt2 {
       ((m_in = bufs), ...);
     }
 
-    void cmd_dispatch(vee::command_buffer cb, unsigned x = X, unsigned y = Y, unsigned z = Z) {
+    void cmd_dispatch(vee::command_buffer cb, unsigned x, unsigned y, unsigned z) {
       vee::cmd_bind_c_pipeline(cb, *m_p);
       vee::cmd_bind_c_descriptor_set(cb, *m_pl, 0, m_ds);
       vee::cmd_dispatch(cb, x, y, z);
