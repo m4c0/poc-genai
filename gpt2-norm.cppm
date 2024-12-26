@@ -33,6 +33,6 @@ namespace gpt2::stages {
       m_3.cmd_dispatch(cb);
     }
 
-    auto memory() const { return m_var.memory(); }
+    auto memory() const { return m_out.memory(); }
   };
 }

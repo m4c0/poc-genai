@@ -9,11 +9,12 @@ layout(binding = 4) readonly buffer e_ { float bi[]; };
 layout(binding = 5)          buffer f_ { float ou[]; };
 
 void main() {
-  uint h = gl_GlobalInvocationID.x * 32;
-  uint p = h * gl_NumWorkGroups.z + gl_GlobalInvocationID.z;
-  uint m = h                      + gl_WorkGroupID.z;
+  uint h = gl_GlobalInvocationID.x;
+  uint z = gl_GlobalInvocationID.z;
+  uint p = h * gl_NumWorkGroups.z + z;
+  uint m = h * 32;
 
-  float d = ip[p] - mn[h] / 768.0;
-  float v = sqrt(1e-05 + vr[h] / 768.0);
-  ou[p] = we[p] * d / v + bi[p];
+  float d = ip[p] - mn[m] / 768.0;
+  float v = sqrt(1e-05 + vr[m] / 768.0);
+  ou[p] = we[z] * d / v + bi[z];
 }
