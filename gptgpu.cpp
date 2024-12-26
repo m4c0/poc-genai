@@ -91,10 +91,10 @@ int main() try {
 
     l[i].ln2_w = gpt2::create_st_buffer(i, "ln_2", "weight");
     l[i].ln2_b = gpt2::create_st_buffer(i, "ln_2", "bias");
-    l[i].attn_w = gpt2::create_st_buffer(i, "mlp.c_fc", "weight");
-    l[i].attn_b = gpt2::create_st_buffer(i, "mlp.c_fc", "bias");
-    l[i].attn_pw = gpt2::create_st_buffer(i, "mlp.c_proj", "weight");
-    l[i].attn_pb = gpt2::create_st_buffer(i, "mlp.c_proj", "bias");
+    l[i].mlp_w = gpt2::create_st_buffer(i, "mlp.c_fc", "weight");
+    l[i].mlp_b = gpt2::create_st_buffer(i, "mlp.c_fc", "bias");
+    l[i].mlp_pw = gpt2::create_st_buffer(i, "mlp.c_proj", "weight");
+    l[i].mlp_pb = gpt2::create_st_buffer(i, "mlp.c_proj", "bias");
   }
 
   // TODO: implement the encoder properly
