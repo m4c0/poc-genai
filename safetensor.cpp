@@ -120,9 +120,7 @@ static void print_keys(const auto & root) {
 }
 
 int main(int argc, char ** argv) try {
-  if (argc < 2) die("missing filename");
-
-  auto model_raw = jojo::read(jute::view::unsafe(argv[1]));
+  auto model_raw = jojo::read("out/model.safetensors");
   jute::view model { model_raw.begin(), model_raw.size() };
 
   auto hdr_size = *reinterpret_cast<const uint64_t *>(model.begin());

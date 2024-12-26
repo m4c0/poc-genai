@@ -18,8 +18,8 @@ namespace gpt2::stages {
          vee::buffer::type in,
          vee::buffer::type w,
          vee::buffer::type b)
-      : m_var { pd, n_ctx * n_embed * 32 }
-      , m_out { pd, n_ctx * n_embed * n_embed }
+      : m_var { pd, n_ctx * 32 }
+      , m_out { pd, n_ctx * n_embed }
       , m_0 { pd, in }
       , m_1 { pd, "gpt2-norm1.comp.spv", in, m_0.buffer(), *m_var }
       , m_2 { pd, "gpt2-reduce1k-sum.comp.spv", *m_var, *m_var }

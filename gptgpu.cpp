@@ -114,6 +114,8 @@ int main() try {
 
   gpt2::stages::wtewpe wtewpe { pd, *wte, *wpe, *tk_buf };
 
+  gpt2::stages::norm norm { pd, wtewpe.buffer(), *l[0].ln1_w, *l[0].ln1_b };
+
   static constexpr const auto max_sets = 16;
   auto dpool = vee::create_descriptor_pool(max_sets, { vee::storage_buffer(max_sets * 4) });
 
@@ -122,6 +124,7 @@ int main() try {
 
   vee::begin_cmd_buf_one_time_submit(cb);
   wtewpe.cmd_dispatch(cb, tks);
+  norm.cmd_dispatch(cb);
   vee::end_cmd_buf(cb);
 
   auto f = vee::create_fence_signaled();
