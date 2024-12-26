@@ -26,11 +26,11 @@ namespace gpt2::stages {
       , m_3 { pd, "gpt2-norm2.comp.spv",
               in, m_0.buffer(), *m_var, w, b, *m_out } {}
 
-    void cmd_dispatch(vee::command_buffer cb) {
+    void cmd_dispatch(vee::command_buffer cb, unsigned tks) {
       m_0.cmd_dispatch(cb);
       m_1.cmd_dispatch(cb);
       m_2.cmd_dispatch(cb);
-      m_3.cmd_dispatch(cb);
+      m_3.cmd_dispatch(cb, tks);
     }
 
     auto memory() const { return m_out.memory(); }

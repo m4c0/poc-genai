@@ -124,7 +124,7 @@ int main() try {
 
   vee::begin_cmd_buf_one_time_submit(cb);
   wtewpe.cmd_dispatch(cb, tks);
-  norm.cmd_dispatch(cb);
+  norm.cmd_dispatch(cb, tks);
   vee::end_cmd_buf(cb);
 
   auto f = vee::create_fence_signaled();
