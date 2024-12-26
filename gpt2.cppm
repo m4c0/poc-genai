@@ -1,6 +1,7 @@
 #pragma leco add_impl gpt2_metadata
 export module gpt2;
 export import :consts;
+export import :linear;
 export import :norm;
 export import :smax;
 export import :wtewpe;

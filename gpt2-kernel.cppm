@@ -9,7 +9,7 @@ namespace gpt2 {
     vee::descriptor_set m_ds;
     vee::pipeline_layout m_pl;
     vee::c_pipeline m_p;
-    vee::buffer::type m_in;
+    vee::buffer::type m_out;
 
     static auto storage(auto) { return vee::dsl_compute_storage(); }
 
@@ -24,14 +24,14 @@ namespace gpt2 {
       m_p = utils::create_pipeline(shd, *m_pl);
       m_ds = utils::allocate_dset(*m_dpool, *dsl, bufs...);
 
-      ((m_in = bufs), ...);
+      ((m_out = bufs), ...);
     }
 
     void cmd_dispatch(vee::command_buffer cb, unsigned x, unsigned y, unsigned z) {
       vee::cmd_bind_c_pipeline(cb, *m_p);
       vee::cmd_bind_c_descriptor_set(cb, *m_pl, 0, m_ds);
       vee::cmd_dispatch(cb, x, y, z);
-      vee::cmd_pipeline_barrier(cb, m_in, vee::from_compute_to_compute);
+      vee::cmd_pipeline_barrier(cb, m_out, vee::from_compute_to_compute);
     }
   };
 }
