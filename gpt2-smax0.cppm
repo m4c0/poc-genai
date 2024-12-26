@@ -5,7 +5,7 @@ import :reduce1k;
 import vee;
 
 namespace gpt2::stages {
-  export struct smax0 : reduce1k {
+  export struct smax0 : reduce1k<n_head * n_ctx, n_ctx> {
     smax0(vee::physical_device pd, vee::buffer::type in)
       : reduce1k { pd, in, "gpt2-smax0.comp" } {
     }
