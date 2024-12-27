@@ -1,8 +1,11 @@
 #pragma leco add_shader "gpt2-norm1.comp"
 #pragma leco add_shader "gpt2-norm2.comp"
 export module gpt2:norm;
+import :consts;
 import :kernel;
 import :reduce1k;
+import :utils;
+import vee;
 
 namespace gpt2::stages {
   export class norm {

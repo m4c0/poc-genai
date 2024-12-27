@@ -2,6 +2,7 @@
 export module gpt2:reduce1k;
 import :consts;
 import :utils;
+import jute;
 import vee;
 
 namespace gpt2::stages {

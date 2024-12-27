@@ -14,8 +14,8 @@ using namespace traits::ints;
 namespace j = jason::ast;
 namespace jn = j::nodes;
 
-// static constexpr const auto n_ctx = 1024;
-// static constexpr const auto n_embed = 768;
+static constexpr const auto n_ctx = 1024;
+static constexpr const auto n_embed = 768;
 // static constexpr const auto n_eps = 1e-05;
 // static constexpr const auto n_head = 12;
 static constexpr const auto n_layer = 12;

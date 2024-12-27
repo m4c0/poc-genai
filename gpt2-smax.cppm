@@ -1,8 +1,10 @@
 export module gpt2:smax;
+import :consts;
 import :reduce1k;
 import :smax0;
 import :smax1;
 import :smax3;
+import vee;
 
 namespace gpt2::stages {
   export class smax {

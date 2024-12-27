@@ -2,6 +2,7 @@
 export module gpt2:linear;
 import :kernel;
 import :utils;
+import vee;
 
 namespace gpt2::stages {
   export template<unsigned I, unsigned J, unsigned K>

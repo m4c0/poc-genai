@@ -5,7 +5,9 @@ export import :linear;
 export import :norm;
 export import :smax;
 export import :wtewpe;
+import jute;
 import print;
+import vee;
 
 namespace gpt2 {
   export vee::device_memory load(vee::physical_device pd);
