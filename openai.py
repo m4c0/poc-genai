@@ -19,8 +19,11 @@ messages = [{
   "role": "developer",
   "content": "You are an automated assistant robot without personality"
 }, {
+  "role": "developer",
+  "content": "Output files may reside in a folder named 'out' or 'build'. Do not expose the directory name."
+}, {
   "role": "user",
-  "content": "List shader files"
+  "content": "Find all json file inside any folder in the output dir"
 }]
 
 while True:
@@ -31,7 +34,7 @@ while True:
       "type": "function",
       "function": {
         "name": "list_files",
-        "description": "list files in current directory",
+        "description": "list files in current directory without recursing",
         "strict": True,
         "parameters": {
           "type": "object",
@@ -61,8 +64,11 @@ while True:
   
   class Funcs:
     def list_files(path):
-      print(f"listing {path}")
-      return os.listdir(".")
+      print(f'listing {path}')
+      try:
+        return os.listdir(path)
+      except FileNotFoundError:
+        return []
   
   if msg['content']:
     print(msg['content'])
@@ -73,9 +79,10 @@ while True:
   messages.append(msg)
   for tc in msg['tool_calls']:
     fn = tc['function']
+    args = json.loads(fn['arguments'])
     messages.append({
       "role": "tool",
       "tool_call_id": tc["id"],
-      "content": str(getattr(Funcs, fn['name'])(*json.loads(fn['arguments'])))
+      "content": str(getattr(Funcs, fn['name'])(**args))
     })
 
