@@ -53,10 +53,18 @@ conn.close()
 if resp.status != 200:
   raise Exc(f"Error: {resp.status}, {resp_data.decode()}")
 
-resp_json = json.loads(resp_data)['choices'][0]
-print(resp_json)
+msg = json.loads(resp_data)['choices'][0]['message']
 
-cont = resp_json['message']['content']
-print(cont)
+class Funcs:
+  def list_files(path):
+    print(f"listing {path}")
+    return os.listdir(".")
 
+if msg['content']:
+  print(msg['content'])
+
+for tc in msg['tool_calls']:
+  fn = tc['function']
+  val = getattr(Funcs, fn['name'])(*json.loads(fn['arguments']))
+  print(val)
 
