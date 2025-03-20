@@ -23,6 +23,25 @@ data = json.dumps({
   }, {
     "role": "user",
     "content": "List files in this repo"
+  }],
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "list_files",
+      "description": "list files in current directory",
+      "strict": True,
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "path to search"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": False
+      }
+    },
   }]
 })
 
