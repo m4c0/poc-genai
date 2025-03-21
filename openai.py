@@ -23,7 +23,7 @@ messages = [{
   "content": "Output files may reside in a folder named 'out' or 'build'. Do not expose the directory name."
 }, {
   "role": "user",
-  "content": "Find all json file inside any folder in the output dir"
+  "content": "Find a syntax error in a json file in the output dir"
 }]
 
 while True:
@@ -33,8 +33,8 @@ while True:
     "tools": [{
       "type": "function",
       "function": {
-        "name": "list_files",
-        "description": "list files in current directory without recursing",
+        "name": "cat_file",
+        "description": "Retrieves the context of a file, relative to the root of the repository.",
         "strict": True,
         "parameters": {
           "type": "object",
@@ -42,6 +42,24 @@ while True:
             "path": {
               "type": "string",
               "description": "path to search"
+            }
+          },
+          "required": ["path"],
+          "additionalProperties": False
+        }
+      },
+    }, { 
+      "type": "function",
+      "function": {
+        "name": "list_files",
+        "description": "List files in a given directory. The tool don't recurse and it only works with directories.",
+        "strict": True,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Directory to list"
             }
           },
           "required": ["path"],
@@ -63,10 +81,17 @@ while True:
   msg = cho['message']
   
   class Funcs:
+    def cat_file(path):
+      print(f'cat {path}')
+      with open(path, 'r') as f:
+        return f.read()
+      
     def list_files(path):
       print(f'listing {path}')
       try:
         return os.listdir(path)
+      except NotADirectoryError:
+        return []
       except FileNotFoundError:
         return []
   
