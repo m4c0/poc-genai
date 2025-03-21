@@ -1,6 +1,7 @@
 import http.client
 import json
 import os
+import subprocess
 
 class Exc(Exception):
   pass
@@ -23,7 +24,7 @@ messages = [{
   "content": """
 Output files may reside in a folder named 'out' or 'build'. Do not expose the directory name.
 
-Usually, a C++ module exports a namespace with the same name as the module. Example: a function called xxx::aaa() most probably exists in a module named xxx.
+Usually, a C++ module exports a namespace with the same name as the module. Example: a function called xxx::aaa() most probably exists in a file inside a directory named "../xxx"
 """
 }, {
   "role": "user",
@@ -81,18 +82,22 @@ while True:
     }, { 
       "type": "function",
       "function": {
-        "name": "find_module",
-        "description": "Given a C++ module name, outputs its source file name.",
+        "name": "grep",
+        "description": "Given a directory name and a text, it will search for files in that directory containing said text.",
         "strict": True,
         "parameters": {
           "type": "object",
           "properties": {
-            "module": {
+            "directory": {
               "type": "string",
-              "description": "module name"
+              "description": "directory name"
+            },
+            "text": {
+              "type": "string",
+              "description": "text to search"
             }
           },
-          "required": ["module"],
+          "required": ["directory", "text"],
           "additionalProperties": False
         }
       },
@@ -126,6 +131,15 @@ while True:
       except NotADirectoryError:
         return []
       except FileNotFoundError:
+        return []
+
+    def grep(directory, text):
+      print(f'grep {directory} {text}')
+      try:
+        p = subprocess.run(['rg',text,directory],stdout=subprocess.PIPE,text=True,check=True)
+        if (p.stdout == None): return []
+        return p.stdout.splitlines()
+      except subprocess.CalledProcessError:
         return []
 
     def find_module(module):
