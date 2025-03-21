@@ -17,13 +17,17 @@ headers = {
 
 messages = [{
   "role": "developer",
-  "content": "You are an automated assistant robot without personality"
+  "content": "You are an automated assistant robot without personality. You are dealing with a very capable human, so you don't need to explain to go into details of your reasoning."
 }, {
   "role": "developer",
-  "content": "Output files may reside in a folder named 'out' or 'build'. Do not expose the directory name."
+  "content": """
+Output files may reside in a folder named 'out' or 'build'. Do not expose the directory name.
+
+Usually, a C++ module exports a namespace with the same name as the module. Example: a function called xxx::aaa() most probably exists in a module named xxx.
+"""
 }, {
   "role": "user",
-  "content": "Find a syntax error in a json file in the output dir"
+  "content": "List only the source code for the function called in the line 22 of test.cpp"
 }]
 
 while True:
@@ -34,17 +38,25 @@ while True:
       "type": "function",
       "function": {
         "name": "cat_file",
-        "description": "Retrieves the context of a file, relative to the root of the repository.",
+        "description": "Retrieves the context of a file. Result is empty if file was not found.",
         "strict": True,
         "parameters": {
           "type": "object",
           "properties": {
             "path": {
               "type": "string",
-              "description": "path to search"
+              "description": "filename to be retrieved"
+            },
+            "line_start": {
+              "type": "integer",
+              "description": "First line to retrieve, starting from 1."
+            },
+            "line_end": {
+              "type": "integer",
+              "description": "Last line to retrieve, starting from 1. Pass -1 to indicate the last line."
             }
           },
-          "required": ["path"],
+          "required": ["path", "line_start", "line_end"],
           "additionalProperties": False
         }
       },
@@ -52,7 +64,7 @@ while True:
       "type": "function",
       "function": {
         "name": "list_files",
-        "description": "List files in a given directory. The tool don't recurse and it only works with directories.",
+        "description": "List files in a given directory. The tool don't recurse and it only works with directories. Result is empty if directory does not exist.",
         "strict": True,
         "parameters": {
           "type": "object",
@@ -63,6 +75,24 @@ while True:
             }
           },
           "required": ["path"],
+          "additionalProperties": False
+        }
+      },
+    }, { 
+      "type": "function",
+      "function": {
+        "name": "find_module",
+        "description": "Given a C++ module name, outputs its source file name.",
+        "strict": True,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "description": "module name"
+            }
+          },
+          "required": ["module"],
           "additionalProperties": False
         }
       },
@@ -81,10 +111,13 @@ while True:
   msg = cho['message']
   
   class Funcs:
-    def cat_file(path):
-      print(f'cat {path}')
-      with open(path, 'r') as f:
-        return f.read()
+    def cat_file(path, line_start, line_end):
+      print(f'cat {path} {line_start} {line_end}')
+      try:
+        with open(path, 'r') as f:
+          return f.readlines()[line_start:line_end]
+      except FileNotFoundError:
+        return ''
       
     def list_files(path):
       print(f'listing {path}')
@@ -94,6 +127,10 @@ while True:
         return []
       except FileNotFoundError:
         return []
+
+    def find_module(module):
+      print(f'find module {module}')
+      return f'../{module}/{module}.cppm'
   
   if msg['content']:
     print(msg['content'])
