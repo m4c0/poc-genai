@@ -18,6 +18,8 @@ int main() {
   hai::chain<item> items { 10240 };
   items.push_back({});
 
+  unsigned max_id {};
+  unsigned max_count {};
   for (auto i = 0; i < all.size() - 1; i++) {
     auto key = all.subview(i, 2).middle;
     auto & idx = idxs[key];
@@ -25,11 +27,12 @@ int main() {
       items.push_back({ key });
       idx = items.size();
     }
-    items.seek(idx - 1).count++;
+    auto c = ++items.seek(idx - 1).count;
+    if (c > max_count) {
+      max_id = idx;
+      max_count = c;
+    }
   }
 
-  for (auto &[k, c]: items) {
-    if (k == "") continue;
-    putln(k, " = ", c);
-  }
+  putln(max_count, "-", items.seek(max_id - 1).key);
 }
