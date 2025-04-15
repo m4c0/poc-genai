@@ -25,7 +25,7 @@ namespace gpt2::utils {
 
   void update_dset(auto ds, unsigned idx) {}
   void update_dset(auto ds, unsigned idx, auto buf, auto... bufs) {
-    vee::update_descriptor_set_with_storage(ds, idx, buf);
+    vee::update_descriptor_set(ds, idx, buf);
     update_dset(ds, idx + 1, bufs...);
   }
   auto allocate_dset(auto dpool, auto dsl, auto... bufs) {

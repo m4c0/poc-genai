@@ -143,7 +143,6 @@ static auto linear(f32a<I, K> & x, int layer, const char * mats, f32v<I, J> init
       }
     }
   }
-#endif
   return res;
 }
 
@@ -206,7 +205,6 @@ static auto mha(f32a<n_ctx, n_embed> & x, unsigned tks, int layer) {
   return linear<n_ctx, n_embed, n_embed>(hstack, layer, "attn.c_proj", x);
 }
 
-static constexpr const auto pi = 3.14159265358979323;
 static auto ffn(f32a<n_ctx, n_embed> & x, int tks, int layer) {
   auto xn = layer_norm(x, tks, layer, "ln_2");
   auto a = linear<n_ctx, n_embed * 4, n_embed>(xn, layer, "mlp.c_fc", {});

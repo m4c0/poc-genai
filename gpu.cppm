@@ -50,7 +50,7 @@ public:
       m = vee::create_host_buffer_memory(pd, mat_mem_sz);
       b = vee::create_buffer(mat_mem_sz, vee::buffer_usage::storage_buffer);
       vee::bind_buffer_memory(*b, *m, 0);
-      vee::update_descriptor_set_with_storage(m_ds, i, *b);
+      vee::update_descriptor_set(m_ds, i, *b);
     }
 
     auto kern = vee::create_shader_module_from_resource("gpu.comp.spv");
