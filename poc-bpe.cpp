@@ -5,14 +5,20 @@ import jojo;
 import jute;
 import print;
 
-struct item {
-  jute::view key;
-  unsigned count = 0;
-};
-int main() {
-  //auto cstr = jojo::read_cstr("dom-casmurro.txt");
-  //jute::view all { cstr };
-  jute::view all { "o rato roeu a roupa do rei de roma" };
+static auto create_initial_tokens() {
+  hai::chain<jute::heap> tokens { 102400 };
+  for (auto i = 0; i < 256; i++) {
+    char buf = i;
+    tokens.push_back(jute::view { &buf, 1 });
+  }
+  return tokens;
+}
+
+static auto find_next_pair(jute::view all) {
+  struct item {
+    jute::view key;
+    unsigned count = 0;
+  };
 
   hashley::niamh idxs { 1023 };
   hai::chain<item> items { 10240 };
@@ -33,6 +39,14 @@ int main() {
       max_count = c;
     }
   }
+  return items.seek(max_id - 1).key;
+}
 
-  putln(max_count, "-", items.seek(max_id - 1).key);
+int main() {
+  //auto cstr = jojo::read_cstr("dom-casmurro.txt");
+  //jute::view all { cstr };
+  jute::view all { "o rato roeu a roupa do rei de roma" };
+
+  auto tokens = create_initial_tokens();
+  auto key = find_next_pair(all);
 }
