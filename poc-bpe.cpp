@@ -84,6 +84,21 @@ static auto run_compression(jute::view in, dict & d) {
   }
 }
 
+static void dump_token(const dict & d, unsigned c) {
+  if (c < 256) put((char) c);
+  else {
+    auto [a, b] = d.seek(c);
+    dump_token(d, a);
+    dump_token(d, b);
+  }
+}
+static void dump(const tk_str & str, const dict & d) {
+  for (auto c : str) {
+    dump_token(d, c);
+  }
+  putln();
+}
+
 int main() {
   //auto cstr = jojo::read_cstr("dom-casmurro.txt");
   //jute::view all { cstr };
@@ -91,10 +106,5 @@ int main() {
 
   auto tokens = create_initial_tokens();
   auto str = run_compression(all, tokens);
-
-  for (auto c : str) {
-    if (c < 256) put((char) c);
-    else put("[", c, "]");
-  }
-  putln();
+  dump(str, tokens);
 }
