@@ -79,11 +79,13 @@ static auto run_compression(jute::view in, dict & d) {
   auto str = convert_to_pair_indices(in);
   while (true) try {
     str = run_one_compress(str, d);
+    putln(str.size(), "\t\t", d.size());
   } catch (max_compression_reached) {
     return str;
   }
 }
 
+#if 0
 static void dump_token(const dict & d, unsigned c) {
   if (c < 256) put((char) c);
   else {
@@ -93,18 +95,20 @@ static void dump_token(const dict & d, unsigned c) {
   }
 }
 static void dump(const tk_str & str, const dict & d) {
-  for (auto c : str) {
-    dump_token(d, c);
-  }
+  for (auto c : str) dump_token(d, c);
   putln();
 }
+#endif
 
 int main() {
-  //auto cstr = jojo::read_cstr("dom-casmurro.txt");
-  //jute::view all { cstr };
+#if 0
+  auto cstr = jojo::read_cstr("dom-casmurro.txt");
+  jute::view all { cstr };
+#else
   jute::view all { "o rato roeu a roupa do rei de roma" };
+#endif
 
   auto tokens = create_initial_tokens();
   auto str = run_compression(all, tokens);
-  dump(str, tokens);
+  //dump(str, tokens);
 }
