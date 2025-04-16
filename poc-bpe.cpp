@@ -9,6 +9,7 @@ struct pair {
   unsigned a;
   unsigned b;
 };
+struct max_compression_reached {};
 
 using dict = hai::chain<pair>;
 using tk_str = hai::chain<unsigned>;
@@ -50,7 +51,7 @@ static auto find_next_pair(const tk_str & str) {
       max_count = c;
     }
   }
-  if (max_count == 1) throw 0;
+  if (max_count == 1) throw max_compression_reached {};
   return items.seek(max_id - 1).key;
 }
 
@@ -74,20 +75,26 @@ static auto run_one_compress(const tk_str & str, dict & d) {
   return compress(str, pair, d.size() - 1);
 }
 
+static auto run_compression(jute::view in, dict & d) {
+  auto str = convert_to_pair_indices(in);
+  while (true) try {
+    str = run_one_compress(str, d);
+  } catch (max_compression_reached) {
+    return str;
+  }
+}
+
 int main() {
   //auto cstr = jojo::read_cstr("dom-casmurro.txt");
   //jute::view all { cstr };
   jute::view all { "o rato roeu a roupa do rei de roma" };
 
   auto tokens = create_initial_tokens();
-  auto str = convert_to_pair_indices(all);
+  auto str = run_compression(all, tokens);
 
-  for (auto i = 0; i < 100; i++) {
-    str = run_one_compress(str, tokens);
-    for (auto c : str) {
-      if (c < 256) put((char) c);
-      else put("[", c, "]");
-    }
-    putln();
+  for (auto c : str) {
+    if (c < 256) put((char) c);
+    else put("[", c, "]");
   }
+  putln();
 }
