@@ -5,6 +5,18 @@ import jojo;
 import jute;
 import print;
 
+struct pair {
+  int a;
+  int b;
+};
+static auto convert_to_pairs(jute::view str) {
+  hai::chain<pair> pairs { 102400 };
+  for (auto c : str) {
+    pairs.push_back({ c, 0 });
+  }
+  return pairs;
+}
+
 static auto create_initial_tokens() {
   hai::chain<jute::heap> tokens { 102400 };
   for (auto i = 0; i < 256; i++) {
@@ -48,5 +60,7 @@ int main() {
   jute::view all { "o rato roeu a roupa do rei de roma" };
 
   auto tokens = create_initial_tokens();
+  auto pairs = convert_to_pairs(all);
+
   auto key = find_next_pair(all);
 }
