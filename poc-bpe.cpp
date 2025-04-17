@@ -5,6 +5,7 @@ import hashley;
 import jojo;
 import jute;
 import print;
+import sitime;
 
 struct pair {
   unsigned a;
@@ -42,15 +43,14 @@ static auto convert_to_pair_indices(jute::view str) {
   return pairs;
 }
 
+struct item {
+  pair key;
+  unsigned count = 0;
+};
+static item items[102400] {};
 static auto find_next_pair(const tk_str & str) {
-  struct item {
-    pair key;
-    unsigned count = 0;
-  };
-
-  hashley::siobhan idxs { 1023 };
-  hai::chain<item> items { 10240 };
-  items.push_back({});
+  hashley::siobhan idxs { 7919 };
+  unsigned i_count { 1 };
 
   unsigned max_id {};
   unsigned max_count {};
@@ -58,17 +58,18 @@ static auto find_next_pair(const tk_str & str) {
     pair key { str[i], str[i + 1] };
     auto & idx = idxs[(key.a << 16) | key.b];
     if (idx == 0) {
-      items.push_back({ key });
-      idx = items.size();
+      items[i_count++] = { key };
+      if (i_count == 102400) throw 0;
+      idx = i_count;
     }
-    auto c = ++items.seek(idx - 1).count;
+    auto c = ++items[idx - 1].count;
     if (c > max_count) {
       max_id = idx;
       max_count = c;
     }
   }
   if (max_count == 1) throw max_compression_reached {};
-  return items.seek(max_id - 1).key;
+  return items[max_id - 1].key;
 }
 
 static void compress(tk_str & old, pair p, unsigned idx) {
@@ -93,9 +94,14 @@ static void run_one_compress(tk_str & str, dict & d) {
 
 static auto run_compression(jute::view in, dict & d) {
   auto str = convert_to_pair_indices(in);
+  int count {};
+  sitime::stopwatch t {};
   while (true) try {
     run_one_compress(str, d);
-    putln(str.size(), "\t\t", d.size());
+    if (count++ % 100 == 0) {
+      putln(t.millis(), "\t\t", str.size(), "\t\t", d.size());
+      t = {};
+    }
   } catch (max_compression_reached) {
     return str;
   }
