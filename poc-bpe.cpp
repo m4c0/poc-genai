@@ -13,7 +13,25 @@ struct pair {
 };
 struct max_compression_reached {};
 
-using dict = hai::chain<pair>;
+class dict {
+  hai::varray<pair> m_data { 102400 };
+
+public:
+  dict() {
+    for (auto i = 0U; i < 256; i++) m_data.push_back(pair { i, 0 });
+  }
+
+  [[nodiscard]] auto push_back(pair p) {
+    m_data.push_back(p);
+    if (m_data.size() == 102400) throw 0;
+    return m_data.size() - 1;
+  }
+
+  [[nodiscard]] auto count() const {
+    return m_data.size();
+  }
+};
+
 using tk_str = hai::varray<unsigned>;
 
 #if DUMP_TEST
@@ -30,12 +48,6 @@ static void dump(const tk_str & str, const dict & d) {
   putln();
 }
 #endif
-
-static auto create_initial_tokens() {
-  dict tokens { 102400 };
-  for (auto i = 0U; i < 256; i++) tokens.push_back({ i, 0 });
-  return tokens;
-}
 
 static auto convert_to_pair_indices(jute::view str) {
   tk_str pairs { static_cast<unsigned>(str.size()) };
@@ -88,8 +100,7 @@ static void compress(tk_str & old, pair p, unsigned idx) {
 
 static void run_one_compress(tk_str & str, dict & d) {
   auto pair = find_next_pair(str);
-  d.push_back(pair);
-  compress(str, pair, d.size() - 1);
+  compress(str, pair, d.push_back(pair));
 }
 
 static auto run_compression(jute::view in, dict & d) {
@@ -99,7 +110,7 @@ static auto run_compression(jute::view in, dict & d) {
   while (true) try {
     run_one_compress(str, d);
     if (count++ % 100 == 0) {
-      putln(t.millis(), "\t\t", str.size(), "\t\t", d.size());
+      putln(t.millis(), "\t\t", str.size(), "\t\t", d.count());
       t = {};
     }
   } catch (max_compression_reached) {
@@ -115,7 +126,7 @@ int main() {
   jute::view all { "o rato roeu a roupa do rei de roma" };
 #endif
 
-  auto tokens = create_initial_tokens();
+  dict tokens {};
   auto str = run_compression(all, tokens);
 #if DUMP_TEST
   dump(str, tokens);
