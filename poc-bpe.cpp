@@ -37,16 +37,16 @@ public:
 
 using tk_str = hai::varray<unsigned>;
 
-static void dump_token(FILE * f, const dict & d, unsigned c) {
+static void uncompress_token(FILE * f, const dict & d, unsigned c) {
   if (c < 256) fputc((char) c, f);
   else {
     auto [a, b] = d[c];
-    dump_token(f, d, a);
-    dump_token(f, d, b);
+    uncompress_token(f, d, a);
+    uncompress_token(f, d, b);
   }
 }
-static void dump(FILE * f, const tk_str & str, const dict & d) {
-  for (auto c : str) dump_token(f, d, c);
+static void uncompress(FILE * f, const tk_str & str, const dict & d) {
+  for (auto c : str) uncompress_token(f, d, c);
 }
 
 static auto convert_to_pair_indices(jute::view str) {
@@ -129,6 +129,6 @@ int main() {
   auto str = run_compression(all, tokens);
 
   FILE * f = fopen("out/dump.txt", "wb");
-  dump(f, str, tokens);
+  uncompress(f, str, tokens);
   fclose(f);
 }
