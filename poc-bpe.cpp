@@ -114,13 +114,14 @@ static auto run_compression(jute::view in, dict & d) {
       t = {};
     }
   } catch (max_compression_reached) {
+    putln(t.millis(), "\t\t", str.size(), "\t\t", d.count());
     return str;
   }
 }
 
 int main() {
 #if 1
-  auto cstr = jojo::read_cstr("dom-casmurro.txt");
+  auto cstr = jojo::read_cstr("lorem-ipsum.txt");
   jute::view all { cstr };
 #else
   jute::view all { "o rato roeu a roupa do rei de roma" };
