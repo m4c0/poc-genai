@@ -1,5 +1,6 @@
 #pragma leco tool
-#define DUMP_TEST 0
+#include <stdio.h>
+
 import hai;
 import hashley;
 import jojo;
@@ -36,20 +37,19 @@ public:
 
 using tk_str = hai::varray<unsigned>;
 
-#if DUMP_TEST
-static void dump_token(const dict & d, unsigned c) {
-  if (c < 256) put((char) c);
+static void dump_token(FILE * f, const dict & d, unsigned c) {
+  if (c < 256) fputc((char) c, f);
   else {
     auto [a, b] = d[c];
-    dump_token(d, a);
-    dump_token(d, b);
+    dump_token(f, d, a);
+    dump_token(f, d, b);
   }
 }
 static void dump(const tk_str & str, const dict & d) {
-  for (auto c : str) dump_token(d, c);
-  putln();
+  FILE * f = fopen("out/dump.txt", "wb");
+  for (auto c : str) dump_token(f, d, c);
+  fclose(f);
 }
-#endif
 
 static auto convert_to_pair_indices(jute::view str) {
   tk_str pairs { static_cast<unsigned>(str.size()) };
@@ -122,16 +122,12 @@ static auto run_compression(jute::view in, dict & d) {
 }
 
 int main() {
-#if 1
-  auto cstr = jojo::read_cstr("lorem-ipsum.txt");
+  const char * in = "lorem-ipsum.txt";
+
+  auto cstr = jojo::read_cstr(jute::view::unsafe(in));
   jute::view all { cstr };
-#else
-  jute::view all { "o rato roeu a roupa do rei de roma" };
-#endif
 
   dict tokens {};
   auto str = run_compression(all, tokens);
-#if DUMP_TEST
   dump(str, tokens);
-#endif
 }
