@@ -45,10 +45,8 @@ static void dump_token(FILE * f, const dict & d, unsigned c) {
     dump_token(f, d, b);
   }
 }
-static void dump(const tk_str & str, const dict & d) {
-  FILE * f = fopen("out/dump.txt", "wb");
+static void dump(FILE * f, const tk_str & str, const dict & d) {
   for (auto c : str) dump_token(f, d, c);
-  fclose(f);
 }
 
 static auto convert_to_pair_indices(jute::view str) {
@@ -129,5 +127,8 @@ int main() {
 
   dict tokens {};
   auto str = run_compression(all, tokens);
-  dump(str, tokens);
+
+  FILE * f = fopen("out/dump.txt", "wb");
+  dump(f, str, tokens);
+  fclose(f);
 }
