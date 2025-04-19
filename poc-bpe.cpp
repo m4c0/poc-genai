@@ -21,6 +21,8 @@ public:
     for (auto i = 0U; i < 256; i++) m_data.push_back(pair { i, 0 });
   }
 
+  [[nodiscard]] constexpr auto operator[](unsigned idx) const { return m_data[idx]; }
+
   [[nodiscard]] auto push_back(pair p) {
     m_data.push_back(p);
     if (m_data.size() == 102400) throw 0;
@@ -38,7 +40,7 @@ using tk_str = hai::varray<unsigned>;
 static void dump_token(const dict & d, unsigned c) {
   if (c < 256) put((char) c);
   else {
-    auto [a, b] = d.seek(c);
+    auto [a, b] = d[c];
     dump_token(d, a);
     dump_token(d, b);
   }
