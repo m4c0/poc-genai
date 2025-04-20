@@ -78,7 +78,7 @@ public:
 
 static auto convert_to_pair_indices(jute::view str) {
   tk_str pairs { static_cast<unsigned>(str.size()) };
-  for (auto c : str) pairs.push_back(c);
+  for (unsigned c : str) pairs.push_back(c & 0xFF);
   return pairs;
 }
 
