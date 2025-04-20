@@ -32,21 +32,18 @@ public:
 
   [[nodiscard]] constexpr auto data() const { return m_data.begin(); }
   [[nodiscard]] constexpr auto count() const { return m_data.size(); }
+
+  void uncompress(unsigned c, FILE * f) {
+    if (c < 256) fputc((char) c, f);
+    else {
+      auto [a, b] = m_data[c];
+      uncompress(a, f);
+      uncompress(b, f);
+    }
+  }
 };
 
 using tk_str = hai::varray<unsigned>;
-
-static void uncompress_token(FILE * f, const dict & d, unsigned c) {
-  if (c < 256) fputc((char) c, f);
-  else {
-    auto [a, b] = d[c];
-    uncompress_token(f, d, a);
-    uncompress_token(f, d, b);
-  }
-}
-static void uncompress(FILE * f, const tk_str & str, const dict & d) {
-  for (auto c : str) uncompress_token(f, d, c);
-}
 
 static auto convert_to_pair_indices(jute::view str) {
   tk_str pairs { static_cast<unsigned>(str.size()) };
@@ -135,16 +132,20 @@ int main() {
   dict tokens {};
   auto str = run_compression(all, tokens);
 
-  FILE * f = fopen("out/dump.txt", "wb");
-  uncompress(f, str, tokens);
-  fclose(f);
+  {
+    FILE * f = fopen("out/dump.txt", "wb");
+    for (auto c : str) tokens.uncompress(c, f);
+    fclose(f);
+  }
 
-  f = fopen("out/dump.bpe", "wb");
-  fwrite(tokens.data(), sizeof(pair), tokens.count(), f);
-  fclose(f);
+  {
+    FILE * f = fopen("out/dump.bpe", "wb");
+    fwrite(tokens.data(), sizeof(pair), tokens.count(), f);
+    fclose(f);
+  }
 
   for (auto i = 256; i < tokens.count(); i++) {
-    uncompress_token(stdout, tokens, i);
+    tokens.uncompress(i, stdout);
     putln();
   }
 }
