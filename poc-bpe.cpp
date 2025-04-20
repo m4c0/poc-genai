@@ -55,33 +55,41 @@ static auto convert_to_pair_indices(jute::view str) {
   return pairs;
 }
 
-struct item {
+struct g_item {
   pair key;
-  unsigned count = 0;
+  unsigned count;
 };
-static item items[102400] {};
-static auto find_next_pair(const tk_str & str) {
-  hashley::siobhan idxs { 7919 };
-  unsigned i_count { 1 };
-
-  unsigned max_id {};
-  unsigned max_count {};
-  for (auto i = 0; i < str.size() - 1; i++) {
-    pair key { str[i], str[i + 1] };
-    auto & idx = idxs[(key.a << 16) | key.b];
+static g_item g_items[102400] {};
+class pair_counts {
+  hashley::siobhan m_idxs { 7919 };
+  unsigned m_i_count { 1 };
+public:
+  void incr(unsigned a, unsigned b) {
+    auto & idx = m_idxs[(a << 16) | b];
     if (idx == 0) {
-      items[i_count++] = { key };
-      if (i_count == 102400) throw 0;
-      idx = i_count;
+      g_items[m_i_count++] = {{ a, b }, 0};
+      if (m_i_count == 102400) throw 0;
+      idx = m_i_count;
     }
-    auto c = ++items[idx - 1].count;
-    if (c > max_count) {
-      max_id = idx;
-      max_count = c;
-    }
+    ++g_items[idx - 1].count;
+  }
+
+  [[nodiscard]] constexpr auto begin() const { return g_items; }
+  [[nodiscard]] constexpr auto end() const { return g_items + m_i_count; }
+};
+static auto find_next_pair(const tk_str & str) {
+  pair_counts counts {};
+
+  pair max_pair {};
+  unsigned max_count {};
+  for (auto i = 0; i < str.size() - 1; i++) counts.incr(str[i], str[i + 1]);
+  for (auto [key, count] : counts) {
+    if (count <= max_count) continue;
+    max_pair = key;
+    max_count = count;
   }
   if (max_count == 1) throw max_compression_reached {};
-  return items[max_id - 1].key;
+  return max_pair;
 }
 
 static void compress(tk_str & old, pair p, unsigned idx) {
