@@ -26,13 +26,12 @@ public:
 
   [[nodiscard]] auto push_back(pair p) {
     m_data.push_back(p);
-    if (m_data.size() == 102400) throw 0;
+    if (m_data.size() == m_data.capacity()) throw 0;
     return m_data.size() - 1;
   }
 
-  [[nodiscard]] auto count() const {
-    return m_data.size();
-  }
+  [[nodiscard]] constexpr auto data() const { return m_data.begin(); }
+  [[nodiscard]] constexpr auto count() const { return m_data.size(); }
 };
 
 using tk_str = hai::varray<unsigned>;
@@ -138,5 +137,9 @@ int main() {
 
   FILE * f = fopen("out/dump.txt", "wb");
   uncompress(f, str, tokens);
+  fclose(f);
+
+  f = fopen("out/dump.bpe", "wb");
+  fwrite(tokens.data(), sizeof(pair), tokens.count(), f);
   fclose(f);
 }
