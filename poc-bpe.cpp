@@ -142,4 +142,9 @@ int main() {
   f = fopen("out/dump.bpe", "wb");
   fwrite(tokens.data(), sizeof(pair), tokens.count(), f);
   fclose(f);
+
+  for (auto i = 256; i < tokens.count(); i++) {
+    uncompress_token(stdout, tokens, i);
+    putln();
+  }
 }
