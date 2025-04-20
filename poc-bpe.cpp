@@ -30,7 +30,6 @@ public:
     return m_data.size() - 1;
   }
 
-  [[nodiscard]] constexpr auto data() const { return m_data.begin(); }
   [[nodiscard]] constexpr auto count() const { return m_data.size(); }
 
   void uncompress(unsigned c, FILE * f) {
@@ -40,6 +39,19 @@ public:
       uncompress(a, f);
       uncompress(b, f);
     }
+  }
+
+  void dump_table() {
+    for (auto i = 256; i < m_data.size(); i++) {
+      uncompress(i, stdout);
+      putln();
+    }
+  }
+
+  void write(const char * filename) {
+    FILE * f = fopen(filename, "wb");
+    fwrite(m_data.begin(), sizeof(pair), m_data.size(), f);
+    fclose(f);
   }
 };
 
@@ -138,14 +150,6 @@ int main() {
     fclose(f);
   }
 
-  {
-    FILE * f = fopen("out/dump.bpe", "wb");
-    fwrite(tokens.data(), sizeof(pair), tokens.count(), f);
-    fclose(f);
-  }
-
-  for (auto i = 256; i < tokens.count(); i++) {
-    tokens.uncompress(i, stdout);
-    putln();
-  }
+  tokens.write("out/dump.bpe");
+  tokens.dump_table();
 }
