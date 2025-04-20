@@ -14,6 +14,8 @@ struct pair {
 };
 struct max_compression_reached {};
 
+using tk_str = hai::varray<unsigned>;
+
 class dict {
   hai::varray<pair> m_data { 102400 };
 
@@ -26,7 +28,7 @@ public:
 
   [[nodiscard]] auto push_back(pair p) {
     m_data.push_back(p);
-    if (m_data.size() == m_data.capacity()) throw 0;
+    if (m_data.size() == m_data.capacity()) throw 1;
     return m_data.size() - 1;
   }
 
@@ -40,6 +42,11 @@ public:
       uncompress(b, f);
     }
   }
+  void uncompress(const tk_str & str, const char * filename) {
+    FILE * f = fopen(filename, "wb");
+    for (auto c : str) uncompress(c, f);
+    fclose(f);
+  }
 
   void dump_table() {
     for (auto i = 256; i < m_data.size(); i++) {
@@ -48,14 +55,26 @@ public:
     }
   }
 
+  void read(const char * filename) {
+    FILE * f = fopen(filename, "rb");
+    if (!f) throw 2;
+
+    if (0 != fseek(f, 0, SEEK_END)) throw 3;
+    if (ftell(f) <= 0) throw 4;
+
+    unsigned count = ftell(f) / sizeof(pair);
+    m_data.set_capacity(count);
+    m_data.expand(count);
+    fseek(f, 0, SEEK_SET);
+    if (fread(m_data.begin(), sizeof(pair), count, f) != count) throw 5;
+    fclose(f);
+  }
   void write(const char * filename) {
     FILE * f = fopen(filename, "wb");
     fwrite(m_data.begin(), sizeof(pair), m_data.size(), f);
     fclose(f);
   }
 };
-
-using tk_str = hai::varray<unsigned>;
 
 static auto convert_to_pair_indices(jute::view str) {
   tk_str pairs { static_cast<unsigned>(str.size()) };
@@ -76,7 +95,7 @@ public:
     auto & idx = m_idxs[(a << 16) | b];
     if (idx == 0) {
       g_items[m_i_count++] = {{ a, b }, 0};
-      if (m_i_count == 102400) throw 0;
+      if (m_i_count == 102400) throw 6;
       idx = m_i_count;
     }
     ++g_items[idx - 1].count;
@@ -135,21 +154,21 @@ static auto run_compression(jute::view in, dict & d) {
   }
 }
 
-int main() {
-  const char * in = "lorem-ipsum.txt";
+int main() try {
+  const char * in = "dom-casmurro.txt";
 
   auto cstr = jojo::read_cstr(jute::view::unsafe(in));
   jute::view all { cstr };
 
   dict tokens {};
-  auto str = run_compression(all, tokens);
 
-  {
-    FILE * f = fopen("out/dump.txt", "wb");
-    for (auto c : str) tokens.uncompress(c, f);
-    fclose(f);
-  }
+  tokens.read("out/dump.bpe");
 
-  tokens.write("out/dump.bpe");
+  // auto str = run_compression(all, tokens);
+  // tokens.uncompress(str, "out/dump.txt");
+  // tokens.write("out/dump.bpe");
+
   tokens.dump_table();
+} catch (int e) {
+  return e;
 }
