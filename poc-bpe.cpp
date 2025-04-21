@@ -77,6 +77,8 @@ public:
 };
 
 static auto convert_to_pair_indices(jute::view str) {
+  // TODO: replace single '\n' with a space
+  // TODO: replace double '\n' with a single '\n'
   tk_str pairs { static_cast<unsigned>(str.size()) };
   for (unsigned c : str) pairs.push_back(c & 0xFF);
   return pairs;
