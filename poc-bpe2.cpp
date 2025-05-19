@@ -30,17 +30,18 @@ public:
     }
     return idx - 1;
   }
+  unsigned ping(char c) { return ping(static_cast<unsigned>(c) & 0xFF, 0); }
 
   auto begin() const { return m_data.begin(); }
   auto end() const { return m_data.end(); }
   auto size() const { return m_data.size(); }
 
   auto count_of(unsigned idx) const { return m_data.seek(idx).count; }
-  void put(unsigned idx) const {
+  void print(unsigned idx) const {
     auto [a, b, c] = m_data.seek(idx);
     if (b == 0 && 32 <= a && a <= 127) putf("%c", a);
     else if (b == 0) putf("\\x%02X", a);
-    else { put(a); put(b); }
+    else { print(a); print(b); }
   }
 };
 
@@ -50,12 +51,15 @@ int main() {
 
   pairs ps {};
 
-  for (char c : all) {
-    ps.ping(c & 0xFF, 0);
+  auto a = ps.ping(all[0]);
+  for (auto i = 1; i < all.size(); i++) {
+    auto b = ps.ping(all[i]);
+    ps.ping(a, b);
+    a = b;
   }
 
   for (auto i = 0; i < ps.size(); i++) {
-    ps.put(i);
+    ps.print(i);
     putln(" ", ps.count_of(i));
   }
   putfn(">>>>>>>>>>>>>> %d pairs", ps.size());
