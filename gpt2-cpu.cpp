@@ -210,7 +210,7 @@ static auto ffn(f32a<n_ctx, n_embed> & x, int tks, int layer) {
   auto a = linear<n_ctx, n_embed * 4, n_embed>(xn, layer, "mlp.c_fc", {});
   for (auto & f : a.data) {
     using namespace dotz;
-    f = 0.5 * f * (1 + tanh(sqrt(2.0 / pi) * (f + 0.044715 * f * f * f)));
+    f = 0.5 * f * (1 + tanh(sqrt(2.0 / 3.14159265358979323) * (f + 0.044715 * f * f * f)));
   }
 
   return linear<n_ctx, n_embed, n_embed * 4>(a, layer, "mlp.c_proj", x);
