@@ -28,7 +28,7 @@ vee::device_memory gpt2::load(vee::physical_device pd) {
   f.fmap(yoyo::read(g_metadata_buffer.begin(), len)).take(fail);
   g_metadata_json = jason::parse({ g_metadata_buffer.begin(), g_metadata_buffer.size() });
 
-  auto res = vee::create_host_buffer_memory(pd, flen);
+  auto res = vee::create_host_memory(pd, flen);
   auto ptr = static_cast<char *>(vee::map_memory(*res));
   f.fmap(yoyo::read(ptr, flen - len - 8)).take(fail);
   vee::unmap_memory(*res);

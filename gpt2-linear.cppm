@@ -27,7 +27,7 @@ namespace gpt2::stages {
         vee::dsl_compute_storage(),
       });
       m_dpool = vee::create_descriptor_pool(1, { vee::storage_buffer(4) });
-      m_pl = vee::create_pipeline_layout({ *dsl }, { vee::compute_push_constant_range<unsigned>() });
+      m_pl = vee::create_pipeline_layout(*dsl, vee::compute_push_constant_range<unsigned>());
 
       m_p = utils::create_pipeline("gpt2-linear.comp.spv", *m_pl);
       m_ds = utils::allocate_dset(*m_dpool, *dsl, in, w, b, *m_out);

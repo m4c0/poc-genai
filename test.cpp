@@ -7,6 +7,7 @@ import jason;
 import jojo;
 import jute;
 import print;
+import sires;
 import traits;
 import vee;
 import yoyo;
@@ -18,7 +19,7 @@ namespace j = jason::ast;
 namespace jn = j::nodes;
 
 static auto create_pipeline(jute::view shd, auto pl) {
-  auto k_0 = vee::create_shader_module_from_resource(shd);
+  auto k_0 = vee::create_shader_module(sires::jojo_cstr(shd));
   return vee::create_compute_pipeline(pl, *k_0, "main");
 }
 

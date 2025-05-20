@@ -1,6 +1,7 @@
 #pragma leco add_shader "gpu.comp"
 export module gpu;
 import dotz;
+import sires;
 import vee;
 
 struct buf_mem {
@@ -39,7 +40,7 @@ public:
       vee::dsl_compute_storage(),
       vee::dsl_compute_storage(),
     });
-    m_pl = vee::create_pipeline_layout({ *m_dsl }, { vee::compute_push_constant_range<upc>() });
+    m_pl = vee::create_pipeline_layout(*m_dsl, vee::compute_push_constant_range<upc>());
 
     m_dpool = vee::create_descriptor_pool(1, { vee::storage_buffer(mat_count) });
 
@@ -47,13 +48,13 @@ public:
 
     for (auto i = 0; i < mat_count; i++) {
       auto &[b, m] = m_mats[i];
-      m = vee::create_host_buffer_memory(pd, mat_mem_sz);
+      m = vee::create_host_memory(pd, mat_mem_sz);
       b = vee::create_buffer(mat_mem_sz, vee::buffer_usage::storage_buffer);
       vee::bind_buffer_memory(*b, *m, 0);
       vee::update_descriptor_set(m_ds, i, *b);
     }
 
-    auto kern = vee::create_shader_module_from_resource("gpu.comp.spv");
+    auto kern = vee::create_shader_module(sires::jojo_cstr("gpu.comp.spv"));
     m_p = vee::create_compute_pipeline(*m_pl, *kern, "main");
 
     m_cp = vee::create_command_pool(qf);

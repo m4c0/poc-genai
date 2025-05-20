@@ -5,6 +5,7 @@ import gpt2;
 import jason;
 import jojo;
 import jute;
+import sires;
 import print;
 import traits;
 import vee;
@@ -29,7 +30,7 @@ static auto create_local_buffer(unsigned len, auto mem, auto & acc) {
 }
 
 static auto create_pipeline(jute::view shd, auto pl) {
-  auto k_0 = vee::create_shader_module_from_resource(shd);
+  auto k_0 = vee::create_shader_module(sires::jojo_cstr(shd));
   return vee::create_compute_pipeline(pl, *k_0, "main");
 }
 

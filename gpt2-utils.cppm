@@ -1,5 +1,6 @@
 export module gpt2:utils;
 import jute;
+import sires;
 import vee;
 
 namespace gpt2::utils {
@@ -19,7 +20,7 @@ namespace gpt2::utils {
   };
 
   auto create_pipeline(jute::view shd, vee::pipeline_layout::type pl) {
-    auto k = vee::create_shader_module_from_resource(shd);
+    auto k = vee::create_shader_module(sires::jojo_cstr(shd));
     return vee::create_compute_pipeline(pl, *k, "main");
   } 
 
